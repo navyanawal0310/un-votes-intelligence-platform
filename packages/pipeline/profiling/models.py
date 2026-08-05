@@ -9,10 +9,6 @@ import pandas as pd
 
 @dataclass(slots=True)
 class DatasetProfile:
-    """
-    Stores the profiling results for a dataset.
-    """
-
     rows: int
     columns: int
 
@@ -24,3 +20,5 @@ class DatasetProfile:
 
     missing_values: pd.Series
     dtypes: pd.Series
+
+    unique_vote_values: list[str]

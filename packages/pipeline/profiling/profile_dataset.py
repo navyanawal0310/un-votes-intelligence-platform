@@ -2,15 +2,13 @@
 Entry point for dataset profiling.
 """
 
-from pathlib import Path
 
 from .analyzer import load_dataset, profile_dataset
 
 from packages.common.constants import DATASET_FILENAME
 from packages.common.paths import DOWNLOADS_DIR
-
+from packages.pipeline.profiling.exporters import ProfileExporter
 DATASET_PATH = DOWNLOADS_DIR / DATASET_FILENAME
-
 
 def main() -> None:
 
@@ -30,6 +28,9 @@ def main() -> None:
 
     print("-" * 60)
 
+    exporter = ProfileExporter()
+    exporter.export(profile)
+    print("Reports exported successfully.")
 
 if __name__ == "__main__":
     main()
