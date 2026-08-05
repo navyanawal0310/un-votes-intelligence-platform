@@ -8,21 +8,7 @@ import pandas as pd
 
 from .models import DatasetProfile
 
-
-METADATA_COLUMNS = [
-    "Council",
-    "Date",
-    "Title",
-    "Resolution",
-    "TOTAL VOTES",
-    "NO-VOTE COUNT",
-    "ABSENT COUNT",
-    "NO COUNT",
-    "YES COUNT",
-    "Link",
-    "token",
-]
-
+from packages.common.constants import METADATA_COLUMNS
 
 def load_dataset(path: Path) -> pd.DataFrame:
     """

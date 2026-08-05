@@ -6,7 +6,10 @@ from pathlib import Path
 
 from .analyzer import load_dataset, profile_dataset
 
-DATASET_PATH = Path("data/raw/downloads/UN DATA.csv")
+from packages.common.constants import DATASET_FILENAME
+from packages.common.paths import DOWNLOADS_DIR
+
+DATASET_PATH = DOWNLOADS_DIR / DATASET_FILENAME
 
 
 def main() -> None:
