@@ -27,59 +27,111 @@ def build_dim_council(df: pd.DataFrame) -> pd.DataFrame:
     )
 def build_dim_date(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Build the date dimension from the voting dataset.
+    Build the date dimension while preserving source date precision.
 
-    The source dataset contains mixed date representations, so
-    parsing is performed explicitly with format='mixed'.
-
-    Raises
-    ------
-    ValueError
-        If any source date cannot be parsed.
+    Full dates are stored as actual dates.
+    Year-only source values are represented with a NULL full_date
+    and their corresponding year.
     """
 
+    raw_dates = df["Date"].astype(str).str.strip()
+
+    year_only_mask = raw_dates.str.fullmatch(r"\d{4}")
+
     parsed_dates = pd.to_datetime(
-        df["Date"],
+        raw_dates.where(~year_only_mask),
         format="mixed",
         errors="coerce",
     )
 
-    invalid_dates = df.loc[
-        parsed_dates.isna(),
-        "Date",
-    ].drop_duplicates()
+    invalid_mask = (
+        parsed_dates.isna()
+        & ~year_only_mask
+    )
 
-    if not invalid_dates.empty:
-        examples = invalid_dates.head(10).tolist()
+    if invalid_mask.any():
+        invalid_values = (
+            raw_dates.loc[invalid_mask]
+            .drop_duplicates()
+            .head(10)
+            .tolist()
+        )
 
         raise ValueError(
             "Unable to parse source date values. "
-            f"Examples: {examples}"
+            f"Examples: {invalid_values}"
         )
 
-    dates = (
-        parsed_dates
+    records: list[dict] = []
+
+    # Full-precision dates
+    full_dates = (
+        parsed_dates.loc[~year_only_mask]
         .drop_duplicates()
         .sort_values()
-        .reset_index(drop=True)
     )
 
-    dim_date = pd.DataFrame(
-        {
-            "date_id": range(1, len(dates) + 1),
-            "full_date": dates,
-        }
+    for date in full_dates:
+        records.append(
+            {
+                "full_date": date,
+                "year": date.year,
+                "date_precision": "FULL_DATE",
+            }
+        )
+
+    # Year-only dates
+    year_only_values = (
+        raw_dates.loc[year_only_mask]
+        .astype(int)
+        .drop_duplicates()
+        .sort_values()
     )
 
-    dim_date["year"] = dim_date["full_date"].dt.year
-    dim_date["quarter"] = dim_date["full_date"].dt.quarter
-    dim_date["month"] = dim_date["full_date"].dt.month
+    for year in year_only_values:
+        records.append(
+            {
+                "full_date": pd.NaT,
+                "year": year,
+                "date_precision": "YEAR_ONLY",
+            }
+        )
+
+    dim_date = pd.DataFrame(records)
+
+    dim_date = dim_date.sort_values(
+        ["year", "full_date", "date_precision"],
+        na_position="last",
+    ).reset_index(drop=True)
+
+    dim_date["date_id"] = range(
+        1,
+        len(dim_date) + 1,
+    )
+
+    dim_date["quarter"] = (
+        dim_date["full_date"]
+        .dt.quarter
+    )
+
+    dim_date["month"] = (
+        dim_date["full_date"]
+        .dt.month
+    )
+
     dim_date["month_name"] = (
-        dim_date["full_date"].dt.month_name()
+        dim_date["full_date"]
+        .dt.month_name()
     )
-    dim_date["day"] = dim_date["full_date"].dt.day
+
+    dim_date["day"] = (
+        dim_date["full_date"]
+        .dt.day
+    )
+
     dim_date["day_name"] = (
-        dim_date["full_date"].dt.day_name()
+        dim_date["full_date"]
+        .dt.day_name()
     )
 
     return dim_date[
@@ -92,6 +144,7 @@ def build_dim_date(df: pd.DataFrame) -> pd.DataFrame:
             "month_name",
             "day",
             "day_name",
+            "date_precision",
         ]
     ]
 

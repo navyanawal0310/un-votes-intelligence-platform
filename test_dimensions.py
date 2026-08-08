@@ -31,9 +31,56 @@ print(f"Countries: {len(dim_country):,}")
 
 print("\nDATE DIMENSION INFO:")
 dim_date.info()
+year_only_dates = dim_date[
+    dim_date["date_precision"] == "YEAR_ONLY"
+]
+
+print("\nYEAR-ONLY DATES")
+print(year_only_dates)
 
 assert dim_date["date_id"].is_unique
-assert dim_date["full_date"].is_unique
-assert dim_date["full_date"].notna().all()
+assert dim_date["year"].notna().all()
+assert dim_date["date_precision"].isin(
+    ["FULL_DATE", "YEAR_ONLY"]
+).all()
 
 print("\nDate dimension validation: PASSED")
+
+print("\nCOUNTRY NORMALIZATION AUDIT")
+print("-" * 50)
+
+country_audit = (
+    long_df[["CountryRaw", "Country"]]
+    .drop_duplicates()
+    .sort_values(["Country", "CountryRaw"])
+)
+
+normalized_duplicates = (
+    country_audit[
+        country_audit["Country"].duplicated(keep=False)
+    ]
+)
+
+print("Raw country names:", country_audit["CountryRaw"].nunique())
+print("Canonical countries:", country_audit["Country"].nunique())
+
+print("\nCOUNTRY NAMES WITH MULTIPLE SOURCE REPRESENTATIONS:")
+print(normalized_duplicates.to_string(index=False))
+assert dim_country["country_id"].is_unique
+assert dim_country["country_name"].is_unique
+assert dim_country["country_name"].notna().all()
+assert (
+    dim_country["country_name"].str.strip()
+    == dim_country["country_name"]
+).all()
+print("\nCOUNTRY DIMENSION VALIDATION: PASSED")
+problematic = country_audit[
+    country_audit["CountryRaw"].str.contains(
+        r"^(?:\s+|\s*Aa\s+|\s*AY\s+)",
+        regex=True,
+        na=False,
+    )
+]
+
+print("\nNORMALIZED SOURCE VALUES:")
+print(problematic.to_string(index=False))
