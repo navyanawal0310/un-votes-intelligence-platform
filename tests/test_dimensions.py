@@ -6,6 +6,7 @@ from packages.warehouse.dimensions import (
     build_dim_council,
     build_dim_date,
     build_dim_country,
+    build_dim_resolution,
 )
 
 
@@ -15,7 +16,7 @@ long_df = unpivot_dataset(df)
 dim_council = build_dim_council(long_df)
 dim_date = build_dim_date(long_df)
 dim_country = build_dim_country(long_df)
-
+dim_resolution = build_dim_resolution(long_df)
 print("COUNCIL DIMENSION:")
 print(dim_council)
 
@@ -84,3 +85,16 @@ problematic = country_audit[
 
 print("\nNORMALIZED SOURCE VALUES:")
 print(problematic.to_string(index=False))
+
+print("\nRESOLUTION DIMENSION")
+print("-" * 50)
+print(dim_resolution.head(20).to_string(index=False))
+
+print()
+print(f"Resolutions: {len(dim_resolution):,}")
+
+assert dim_resolution["resolution_id"].is_unique
+assert dim_resolution["resolution_code"].is_unique
+assert dim_resolution["resolution_code"].notna().all()
+
+print("\nResolution dimension validation: PASSED")

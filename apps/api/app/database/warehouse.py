@@ -1,34 +1,61 @@
 """
-Warehouse initialization.
+DuckDB warehouse loading utilities.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 
-from apps.api.app.database.connection import get_connection
+import duckdb
+import pandas as pd
 
 
-SQL_DIR = (
-    Path(__file__).parent
-    / "sql"
-)
+class WarehouseLoader:
+    """Load warehouse DataFrames into DuckDB."""
 
+    def __init__(self, database_path: Path) -> None:
+        self.database_path = database_path
 
-def initialize_warehouse() -> None:
-    """
-    Create warehouse tables.
-    """
+        self.connection = duckdb.connect(
+            str(database_path)
+        )
 
-    conn = get_connection()
+    def load_dataframe(
+        self,
+        dataframe: pd.DataFrame,
+        table_name: str,
+        if_exists: str = "replace",
+    ) -> None:
+        """Load a pandas DataFrame into a DuckDB table."""
 
-    for file_name in [
-        "create_dimensions.sql",
-        "create_facts.sql",
-    ]:
+        if if_exists == "replace":
+            self.connection.execute(
+                f"DROP TABLE IF EXISTS {table_name}"
+            )
 
-        sql = (
-            SQL_DIR / file_name
-        ).read_text()
+        self.connection.register(
+            "temp_dataframe",
+            dataframe,
+        )
 
-        conn.execute(sql)
+        self.connection.execute(
+            f"""
+            CREATE TABLE {table_name} AS
+            SELECT *
+            FROM temp_dataframe
+            """
+        )
 
-    conn.close()
+        self.connection.unregister(
+            "temp_dataframe"
+        )
+
+    def query(self, sql: str) -> pd.DataFrame:
+        """Execute SQL and return the result as a DataFrame."""
+
+        return self.connection.execute(sql).df()
+
+    def close(self) -> None:
+        """Close the DuckDB connection."""
+
+        self.connection.close()

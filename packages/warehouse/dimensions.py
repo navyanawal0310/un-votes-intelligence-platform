@@ -175,3 +175,76 @@ def build_dim_country(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return dim_country
+def build_dim_resolution(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build the resolution dimension.
+
+    Resolution codes identify the logical resolution, while the
+    source token identifies an individual voting event.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Normalized voting dataset.
+
+    Returns
+    -------
+    pd.DataFrame
+        Resolution dimension.
+    """
+
+    resolution_columns = [
+        "Resolution",
+        "Title",
+    ]
+
+    resolutions = (
+        df[resolution_columns]
+        .drop_duplicates()
+        .sort_values("Resolution")
+        .reset_index(drop=True)
+    )
+
+    # A resolution code should map to exactly one title.
+    title_counts = (
+        resolutions
+        .groupby("Resolution")["Title"]
+        .nunique(dropna=False)
+    )
+
+    conflicting_resolutions = title_counts[
+        title_counts > 1
+    ]
+
+    if not conflicting_resolutions.empty:
+        raise ValueError(
+            "Resolution codes map to multiple titles: "
+            f"{conflicting_resolutions.index.tolist()}"
+        )
+
+    dim_resolution = (
+        resolutions
+        .drop_duplicates(subset=["Resolution"])
+        .reset_index(drop=True)
+    )
+
+    dim_resolution.insert(
+        0,
+        "resolution_id",
+        range(1, len(dim_resolution) + 1),
+    )
+
+    dim_resolution = dim_resolution.rename(
+        columns={
+            "Resolution": "resolution_code",
+            "Title": "resolution_title",
+        }
+    )
+
+    return dim_resolution[
+        [
+            "resolution_id",
+            "resolution_code",
+            "resolution_title",
+        ]
+    ]
