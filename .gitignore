@@ -24,3 +24,13 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+# Official UN raw datasets
+# Official UN voting datasets
+data/raw/*.csv
+
+# DuckDB warehouse
+data/warehouse/*.duckdb
+data/warehouse/*.duckdb.wal
+
+# Processed data
+data/processed/
