@@ -1,60 +1,65 @@
 """
-Vote normalization utilities.
-
-Provides both:
-1. Rich VoteInfo objects for business logic.
-2. Fast lookup dictionaries for vectorized ETL.
+UN vote normalization utilities.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final
 
 
 @dataclass(frozen=True, slots=True)
 class VoteInfo:
-    """
-    Represents a normalized UN vote.
-    """
-
     code: str
     label: str
     score: int | None
 
 
-VOTE_MAPPING: Final[dict[str, VoteInfo]] = {
+VOTE_MAPPING = {
     "Y": VoteInfo("Y", "YES", 1),
     "N": VoteInfo("N", "NO", -1),
     "A": VoteInfo("A", "ABSTAIN", 0),
     "X": VoteInfo("X", "ABSENT", None),
 }
 
-# ----------------------------------------------------------------------
-# Fast lookup dictionaries for pandas vectorized operations
-# ----------------------------------------------------------------------
 
-VOTE_LABEL_MAP: Final[dict[str, str]] = {
-    code: vote.label
-    for code, vote in VOTE_MAPPING.items()
-}
-
-VOTE_SCORE_MAP: Final[dict[str, int | None]] = {
-    code: vote.score
-    for code, vote in VOTE_MAPPING.items()
+VOTE_LABEL_MAP = {
+    code: info.label
+    for code, info in VOTE_MAPPING.items()
 }
 
 
-def map_vote(vote_code: str) -> VoteInfo:
+VOTE_SCORE_MAP = {
+    code: info.score
+    for code, info in VOTE_MAPPING.items()
+}
+
+
+VALID_VOTE_CODES = frozenset(VOTE_MAPPING)
+
+
+def normalize_vote_code(vote: str) -> str:
     """
-    Map a raw UN vote code to a VoteInfo object.
+    Normalize a raw UN vote code.
+
+    Parameters
+    ----------
+    vote:
+        Raw vote value from the UN dataset.
+
+    Returns
+    -------
+    str
+        Normalized vote code.
+
+    Raises
+    ------
+    ValueError
+        If the vote code is not recognized.
     """
 
-    vote_code = vote_code.strip().upper()
+    code = str(vote).strip().upper()
 
-    try:
-        return VOTE_MAPPING[vote_code]
-    except KeyError as exc:
-        raise ValueError(
-            f"Unknown vote code: '{vote_code}'"
-        ) from exc
+    if code not in VALID_VOTE_CODES:
+        raise ValueError(f"Unknown UN vote code: {vote!r}")
+
+    return code
