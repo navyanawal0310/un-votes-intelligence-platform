@@ -34,7 +34,13 @@ def load_ga_dataset(path: Path) -> pd.DataFrame:
     """Load and normalize the official UN General Assembly dataset."""
 
     df = pd.read_csv(path)
+    df["session"] = df["session"].astype(str).str.strip()
 
+    df["session_number"] = (
+        df["session"]
+        .str.extract(r"^(\d+)", expand=False)
+        .astype("Int64")
+    )
     missing = REQUIRED_COLUMNS - set(df.columns)
 
     if missing:
