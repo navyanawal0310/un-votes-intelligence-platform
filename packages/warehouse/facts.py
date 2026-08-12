@@ -1,5 +1,5 @@
 """
-Fact table construction for UN voting events.
+Fact table construction for official UN voting events.
 """
 
 from __future__ import annotations
@@ -8,47 +8,51 @@ import pandas as pd
 
 
 def build_fact_votes(
-    long_df: pd.DataFrame,
-    dim_council: pd.DataFrame,
+    canonical_df: pd.DataFrame,
+    dim_body: pd.DataFrame,
     dim_date: pd.DataFrame,
     dim_country: pd.DataFrame,
     dim_resolution: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Build the fact_votes table.
+    Build the fact_votes warehouse table.
 
     Grain:
-        One country vote for one voting event.
+        One Member State vote for one UN voting event.
 
     Parameters
     ----------
-    long_df : pd.DataFrame
-        Normalized long-format voting data.
-    dim_council : pd.DataFrame
-        Council dimension.
-    dim_date : pd.DataFrame
+    canonical_df:
+        Canonical UN voting dataset.
+
+    dim_body:
+        Body dimension.
+
+    dim_date:
         Date dimension.
-    dim_country : pd.DataFrame
+
+    dim_country:
         Country dimension.
-    dim_resolution : pd.DataFrame
+
+    dim_resolution:
         Resolution dimension.
 
     Returns
     -------
     pd.DataFrame
-        Fact table containing one row per country vote.
+        Fact table containing one row per Member State vote.
     """
 
-    fact = long_df.copy()
+    fact = canonical_df.copy()
 
     # ---------------------------------------------------------
-    # Voting event key
+    # 1. Voting event key
     # ---------------------------------------------------------
 
-    fact["vote_event_id"] = fact["token"]
+    fact["vote_event_id"] = fact["undl_id"]
 
     # ---------------------------------------------------------
-    # Resolution key
+    # 2. Resolution key
     # ---------------------------------------------------------
 
     fact = fact.merge(
@@ -58,127 +62,128 @@ def build_fact_votes(
                 "resolution_code",
             ]
         ],
-        left_on="Resolution",
+        left_on="resolution",
         right_on="resolution_code",
         how="left",
         validate="many_to_one",
     )
 
     # ---------------------------------------------------------
-    # Council key
+    # 3. Body key
     # ---------------------------------------------------------
 
     fact = fact.merge(
-        dim_council[
+        dim_body[
             [
-                "council_id",
-                "council_name",
+                "body_id",
+                "body_code",
             ]
         ],
-        left_on="Council",
-        right_on="council_name",
+        on="body_code",
         how="left",
         validate="many_to_one",
     )
 
     # ---------------------------------------------------------
-    # Country key
+    # 4. Country key
     # ---------------------------------------------------------
 
     fact = fact.merge(
         dim_country[
             [
                 "country_id",
-                "country_name",
+                "ms_code",
             ]
         ],
-        left_on="Country",
-        right_on="country_name",
+        on="ms_code",
         how="left",
         validate="many_to_one",
     )
 
     # ---------------------------------------------------------
-    # Date key
+    # 5. Date key
     # ---------------------------------------------------------
 
-        # ---------------------------------------------------------
-    # Date key
-    # ---------------------------------------------------------
-
-    fact["DateRaw"] = fact["Date"].astype(str).str.strip()
-
-    # Determine whether the source contains a full date or
-    # only a year.
-    fact["date_precision"] = fact["DateRaw"].str.fullmatch(
-        r"\d{4}"
-    ).map(
-        {True: "YEAR_ONLY", False: "FULL_DATE"}
+    fact["date"] = pd.to_datetime(
+        fact["date"],
+        errors="coerce",
     )
 
-    # Build a stable date join key.
-    fact["date_join_key"] = fact.apply(
-        lambda row: (
-            f"YEAR:{row['DateRaw']}"
-            if row["date_precision"] == "YEAR_ONLY"
-            else f"DATE:{row['DateRaw']}"
-        ),
-        axis=1,
-    )
+    date_lookup = dim_date[
+        [
+            "date_id",
+            "full_date",
+        ]
+    ].copy()
 
-    date_lookup = dim_date.copy()
-
-    date_lookup["date_join_key"] = date_lookup.apply(
-        lambda row: (
-            f"YEAR:{int(row['year'])}"
-            if row["date_precision"] == "YEAR_ONLY"
-            else f"DATE:{row['full_date'].strftime('%Y-%m-%d')}"
-        ),
-        axis=1,
+    date_lookup["full_date"] = pd.to_datetime(
+        date_lookup["full_date"],
+        errors="coerce",
     )
 
     fact = fact.merge(
-        date_lookup[
-            [
-                "date_id",
-                "date_join_key",
-            ]
-        ],
-        on="date_join_key",
+        date_lookup,
+        left_on="date",
+        right_on="full_date",
         how="left",
         validate="many_to_one",
     )
 
-    fact = fact.drop(
-        columns=[
-            "DateRaw",
-            "date_precision",
-            "date_join_key",
-        ]
-    )
     # ---------------------------------------------------------
-    # Select warehouse columns
+    # 6. Validate dimension lookups
+    # ---------------------------------------------------------
+
+    unresolved = {
+        "resolution_id": fact["resolution_id"].isna().sum(),
+        "body_id": fact["body_id"].isna().sum(),
+        "country_id": fact["country_id"].isna().sum(),
+        "date_id": fact["date_id"].isna().sum(),
+    }
+
+    unresolved = {
+        key: value
+        for key, value in unresolved.items()
+        if value > 0
+    }
+
+    if unresolved:
+        raise ValueError(
+            "Fact table contains unresolved dimension keys: "
+            f"{unresolved}"
+        )
+
+    # ---------------------------------------------------------
+    # 7. Select warehouse columns
     # ---------------------------------------------------------
 
     fact = fact[
         [
             "vote_event_id",
+            "body_id",
             "resolution_id",
             "country_id",
-            "council_id",
             "date_id",
-            "VoteCode",
-            "VoteLabel",
-            "VoteScore",
+            "vote_code",
+            "vote_label",
+            "vote_score",
         ]
     ]
 
-    fact = fact.rename(
-        columns={
-            "VoteCode": "vote_code",
-            "VoteLabel": "vote_label",
-            "VoteScore": "vote_score",
-        }
-    )
+    # ---------------------------------------------------------
+    # 8. Fact-level validation
+    # ---------------------------------------------------------
+
+    duplicate_count = fact.duplicated(
+        subset=[
+            "vote_event_id",
+            "country_id",
+        ]
+    ).sum()
+
+    if duplicate_count > 0:
+        raise ValueError(
+            "Duplicate country votes detected: "
+            f"{duplicate_count}"
+        )
 
     return fact.reset_index(drop=True)

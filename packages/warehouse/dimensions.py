@@ -1,5 +1,5 @@
 """
-Warehouse dimension builders.
+Warehouse dimension builders for official UN voting datasets.
 """
 
 from __future__ import annotations
@@ -7,132 +7,162 @@ from __future__ import annotations
 import pandas as pd
 
 
-def build_dim_council(df: pd.DataFrame) -> pd.DataFrame:
+def build_dim_body(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Build the council dimension.
+    Build the UN body dimension.
+
+    Expected input:
+        body_code
+
+    Example:
+        GA -> General Assembly
+        SC -> Security Council
     """
 
-    councils = (
-        df["Council"]
+    body_names = {
+        "GA": "General Assembly",
+        "SC": "Security Council",
+    }
+
+    bodies = (
+        df["body_code"]
+        .dropna()
+        .astype(str)
+        .str.strip()
         .drop_duplicates()
         .sort_values()
         .reset_index(drop=True)
     )
 
+    unknown_bodies = set(bodies) - set(body_names)
+
+    if unknown_bodies:
+        raise ValueError(
+            f"Unknown UN body codes: {sorted(unknown_bodies)}"
+        )
+
     return pd.DataFrame(
         {
-            "council_id": range(1, len(councils) + 1),
-            "council_name": councils,
+            "body_id": range(1, len(bodies) + 1),
+            "body_code": bodies,
+            "body_name": bodies.map(body_names),
         }
     )
-def build_dim_date(df: pd.DataFrame) -> pd.DataFrame:
+
+
+def build_dim_country(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Build the date dimension while preserving source date precision.
+    Build the country dimension from official UN Member State codes.
 
-    Full dates are stored as actual dates.
-    Year-only source values are represented with a NULL full_date
-    and their corresponding year.
+    The UN dataset preserves the official Member State name at the
+    time of each vote. Therefore, the same ms_code may legitimately
+    appear with different names across history.
+
+    The country dimension uses ms_code as the stable natural key and
+    retains the most recently observed name for each Member State.
     """
 
-    raw_dates = df["Date"].astype(str).str.strip()
+    countries = (
+        df[
+            [
+                "ms_code",
+                "ms_name",
+                "date",
+            ]
+        ]
+        .dropna(subset=["ms_code"])
+        .copy()
+    )
 
-    year_only_mask = raw_dates.str.fullmatch(r"\d{4}")
+    countries["ms_code"] = (
+        countries["ms_code"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
 
-    parsed_dates = pd.to_datetime(
-        raw_dates.where(~year_only_mask),
-        format="mixed",
+    countries["ms_name"] = (
+        countries["ms_name"]
+        .astype(str)
+        .str.strip()
+    )
+
+    countries["date"] = pd.to_datetime(
+        countries["date"],
         errors="coerce",
     )
 
-    invalid_mask = (
-        parsed_dates.isna()
-        & ~year_only_mask
+    # Sort chronologically so the final observed name
+    # becomes the canonical name for the country dimension.
+    countries = countries.sort_values(
+        ["ms_code", "date"]
     )
 
-    if invalid_mask.any():
-        invalid_values = (
-            raw_dates.loc[invalid_mask]
-            .drop_duplicates()
-            .head(10)
-            .tolist()
+    countries = (
+        countries
+        .drop_duplicates(
+            subset=["ms_code"],
+            keep="last",
         )
+        .sort_values("ms_code")
+        .reset_index(drop=True)
+    )
 
+    dim_country = pd.DataFrame(
+        {
+            "country_id": range(
+                1,
+                len(countries) + 1,
+            ),
+            "ms_code": countries["ms_code"],
+            "country_name": countries["ms_name"],
+        }
+    )
+
+    return dim_country
+    
+def build_dim_date(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build the date dimension from official UN voting dates.
+
+    Only dates actually represented in the voting dataset are included.
+    """
+
+    dates = pd.to_datetime(
+        df["date"],
+        errors="coerce",
+    )
+
+    if dates.isna().any():
         raise ValueError(
-            "Unable to parse source date values. "
-            f"Examples: {invalid_values}"
+            "Cannot build dim_date: invalid dates found."
         )
 
-    records: list[dict] = []
-
-    # Full-precision dates
-    full_dates = (
-        parsed_dates.loc[~year_only_mask]
+    dates = (
+        dates
         .drop_duplicates()
         .sort_values()
+        .reset_index(drop=True)
     )
 
-    for date in full_dates:
-        records.append(
-            {
-                "full_date": date,
-                "year": date.year,
-                "date_precision": "FULL_DATE",
-            }
-        )
-
-    # Year-only dates
-    year_only_values = (
-        raw_dates.loc[year_only_mask]
-        .astype(int)
-        .drop_duplicates()
-        .sort_values()
+    dim_date = pd.DataFrame(
+        {
+            "full_date": dates,
+        }
     )
 
-    for year in year_only_values:
-        records.append(
-            {
-                "full_date": pd.NaT,
-                "year": year,
-                "date_precision": "YEAR_ONLY",
-            }
-        )
-
-    dim_date = pd.DataFrame(records)
-
-    dim_date = dim_date.sort_values(
-        ["year", "full_date", "date_precision"],
-        na_position="last",
-    ).reset_index(drop=True)
-
-    dim_date["date_id"] = range(
-        1,
-        len(dim_date) + 1,
+    dim_date.insert(
+        0,
+        "date_id",
+        range(1, len(dim_date) + 1),
     )
 
-    dim_date["quarter"] = (
-        dim_date["full_date"]
-        .dt.quarter
-    )
-
-    dim_date["month"] = (
-        dim_date["full_date"]
-        .dt.month
-    )
-
-    dim_date["month_name"] = (
-        dim_date["full_date"]
-        .dt.month_name()
-    )
-
-    dim_date["day"] = (
-        dim_date["full_date"]
-        .dt.day
-    )
-
-    dim_date["day_name"] = (
-        dim_date["full_date"]
-        .dt.day_name()
-    )
+    dim_date["year"] = dim_date["full_date"].dt.year
+    dim_date["quarter"] = dim_date["full_date"].dt.quarter
+    dim_date["month"] = dim_date["full_date"].dt.month
+    dim_date["month_name"] = dim_date["full_date"].dt.month_name()
+    dim_date["day"] = dim_date["full_date"].dt.day
+    dim_date["day_name"] = dim_date["full_date"].dt.day_name()
 
     return dim_date[
         [
@@ -144,87 +174,59 @@ def build_dim_date(df: pd.DataFrame) -> pd.DataFrame:
             "month_name",
             "day",
             "day_name",
-            "date_precision",
         ]
     ]
 
-def build_dim_country(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Build the country dimension from country columns
-    present in the normalized voting dataset.
 
-    Country IDs are assigned deterministically based on
-    alphabetical ordering of the observed country names.
-    """
-
-    countries = (
-        df["Country"]
-        .dropna()
-        .astype(str)
-        .str.strip()
-        .drop_duplicates()
-        .sort_values()
-        .reset_index(drop=True)
-    )
-
-    dim_country = pd.DataFrame(
-        {
-            "country_id": range(1, len(countries) + 1),
-            "country_name": countries,
-        }
-    )
-
-    return dim_country
 def build_dim_resolution(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Build the resolution dimension.
+    Build the UN resolution dimension.
 
-    Resolution codes identify the logical resolution, while the
-    source token identifies an individual voting event.
+    Each adopted resolution is identified by its official
+    resolution symbol.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Normalized voting dataset.
-
-    Returns
-    -------
-    pd.DataFrame
-        Resolution dimension.
+    Example:
+        A/RES/58/20
     """
 
-    resolution_columns = [
-        "Resolution",
-        "Title",
-    ]
-
     resolutions = (
-        df[resolution_columns]
+        df[
+            [
+                "undl_id",
+                "resolution",
+                "title",
+                "agenda_title",
+                "subjects",
+                "session",
+                "undl_link",
+            ]
+        ]
         .drop_duplicates()
-        .sort_values("Resolution")
+        .sort_values("resolution")
         .reset_index(drop=True)
     )
 
-    # A resolution code should map to exactly one title.
+    # A resolution should have one consistent title.
     title_counts = (
         resolutions
-        .groupby("Resolution")["Title"]
+        .groupby("resolution")["title"]
         .nunique(dropna=False)
     )
 
-    conflicting_resolutions = title_counts[
+    conflicting_titles = title_counts[
         title_counts > 1
     ]
 
-    if not conflicting_resolutions.empty:
+    if not conflicting_titles.empty:
         raise ValueError(
             "Resolution codes map to multiple titles: "
-            f"{conflicting_resolutions.index.tolist()}"
+            f"{conflicting_titles.index.tolist()[:10]}"
         )
 
+    # One row per resolution.
     dim_resolution = (
         resolutions
-        .drop_duplicates(subset=["Resolution"])
+        .drop_duplicates(subset=["resolution"])
         .reset_index(drop=True)
     )
 
@@ -234,17 +236,20 @@ def build_dim_resolution(df: pd.DataFrame) -> pd.DataFrame:
         range(1, len(dim_resolution) + 1),
     )
 
-    dim_resolution = dim_resolution.rename(
+    return dim_resolution.rename(
         columns={
-            "Resolution": "resolution_code",
-            "Title": "resolution_title",
+            "resolution": "resolution_code",
+            "title": "resolution_title",
         }
-    )
-
-    return dim_resolution[
+    )[
         [
             "resolution_id",
             "resolution_code",
             "resolution_title",
+            "agenda_title",
+            "subjects",
+            "session",
+            "undl_id",
+            "undl_link",
         ]
     ]
