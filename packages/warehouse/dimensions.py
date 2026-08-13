@@ -164,6 +164,8 @@ def build_dim_date(df: pd.DataFrame) -> pd.DataFrame:
     dim_date["day"] = dim_date["full_date"].dt.day
     dim_date["day_name"] = dim_date["full_date"].dt.day_name()
 
+    dim_date["date_precision"] = "FULL_DATE"
+
     return dim_date[
         [
             "date_id",
@@ -174,9 +176,9 @@ def build_dim_date(df: pd.DataFrame) -> pd.DataFrame:
             "month_name",
             "day",
             "day_name",
+            "date_precision",
         ]
     ]
-
 
 def build_dim_resolution(df: pd.DataFrame) -> pd.DataFrame:
     """

@@ -9,7 +9,7 @@ Avoid placing configuration or environment-specific values in this file.
 # Dataset
 # ============================================================================
 
-DATASET_FILENAME = "UN DATA.csv"
+DATASET_FILENAME = "2026_02_06_ga_voting.csv"
 
 # ============================================================================
 # Metadata Columns
