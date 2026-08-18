@@ -1,0 +1,6 @@
+country_code,issue,change_year,mean_before,mean_after,change_magnitude,effect_size,persistence,low_variance_shift,confirmed,confidence,country_a,country_b
+IND_RUS,TEMPORAL_ALIGNMENT,2000,0.751,0.862,0.111,3.693,2,False,True,0.669,IND,RUS
+IND_RUS,TEMPORAL_ALIGNMENT,1998,0.672,0.8,0.128,2.896,0,False,False,0.372,IND,RUS
+IND_RUS,TEMPORAL_ALIGNMENT,1999,0.712,0.836,0.124,3.129,0,False,False,0.372,IND,RUS
+IND_RUS,TEMPORAL_ALIGNMENT,1997,0.646,0.751,0.105,3.089,0,False,False,0.368,IND,RUS
+IND_USA,TEMPORAL_ALIGNMENT,2023,0.086,0.201,0.115,8.438,2,False,True,0.67,IND,USA
