@@ -43,15 +43,9 @@ def load_series(con):
         if positions.empty:
             continue
 
-        positions = positions.rename(
-            columns={
-                "country_code": "ms_code",
-                "issue": "subject",
-            }
-        )
 
-        positions["subject"] = (
-            positions["subject"]
+        positions["issue"] = (
+            positions["issue"]
             .astype(str)
             .str.strip()
         )
@@ -68,18 +62,18 @@ def load_series(con):
 
         positions = positions.dropna(
             subset=[
-                "subject",
+                "issue",
                 "year",
                 "position_score",
             ]
         )
 
         for issue in sorted(
-            positions["subject"].unique()
+            positions["issue"].unique()
         ):
 
             series = positions[
-                positions["subject"] == issue
+                positions["issue"] == issue
             ].copy()
 
             series = (

@@ -95,8 +95,8 @@ def make_series(
 
     return pd.DataFrame(
         {
-            "ms_code": ["SYN"] * YEARS,
-            "subject": ["BENCHMARK"] * YEARS,
+            "country_code": ["SYN"] * YEARS,
+            "issue": ["BENCHMARK"] * YEARS,
             "year": np.arange(
                 1980,
                 1980 + YEARS,

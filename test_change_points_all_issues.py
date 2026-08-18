@@ -45,19 +45,13 @@ def main() -> None:
                 min_events=3,
             )
             # Normalize issue_positions schema for the change-point detector.
-            positions = positions.rename(
-                columns={
-                    "country_code": "ms_code",
-                    "issue": "subject",
-                }
-)
 
             if positions.empty:
                 print("No issue-position data")
                 continue
 
-            positions["subject"] = (
-                positions["subject"]
+            positions["issue"] = (
+                positions["issue"]
                 .astype(str)
                 .str.strip()
             )
@@ -73,11 +67,11 @@ def main() -> None:
             )
 
             positions = positions.dropna(
-                subset=["subject", "year", "position_score"]
+                subset=["country_code","issue", "year", "position_score"]
             )
 
             issues = sorted(
-                positions["subject"].unique()
+                positions["issue"].unique()
             )
 
             print(f"Issues available: {len(issues)}")
@@ -85,7 +79,7 @@ def main() -> None:
             for issue in issues:
 
                 series = positions[
-                    positions["subject"] == issue
+                    positions["issue"] == issue
                 ].copy()
 
                 series = (
@@ -110,8 +104,8 @@ def main() -> None:
                         series,
                         before_window=3,
                         after_window=3,
-                        magnitude_threshold=10.0,
-                        effect_threshold=0.8,
+                        magnitude_threshold=0.40,
+                        effect_threshold=0.50,
                         persistence_window=3,
                     )
 

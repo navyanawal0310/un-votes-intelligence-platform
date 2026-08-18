@@ -35,47 +35,108 @@ def _std(values: pd.Series) -> float:
 
     return value
 
-
 def _effect_size(
     before: pd.Series,
     after: pd.Series,
 ) -> float:
     """
-    Standardized difference between two windows.
+    Standardized mean difference between two windows.
 
     Uses pooled standard deviation.
+
+    Returns 0 when the pooled standard deviation is
+    effectively zero, because a standardized effect size
+    is undefined in that case.
     """
 
     if before.empty or after.empty:
         return 0.0
 
-    mean_before = _mean(before)
-    mean_after = _mean(after)
+    before = pd.to_numeric(
+        before,
+        errors="coerce",
+    ).dropna()
 
-    std_before = _std(before)
-    std_after = _std(after)
+    after = pd.to_numeric(
+        after,
+        errors="coerce",
+    ).dropna()
+
+    if before.empty or after.empty:
+        return 0.0
+
+    mean_before = float(before.mean())
+    mean_after = float(after.mean())
+
+    std_before = float(before.std(ddof=1))
+    std_after = float(after.std(ddof=1))
 
     pooled = math.sqrt(
         (
             std_before ** 2
             + std_after ** 2
-        )
-        / 2.0
+        ) / 2.0
     )
 
     difference = abs(
         mean_after - mean_before
     )
 
-    if pooled == 0:
-        return (
-            difference
-            if difference > 0
-            else 0.0
-        )
+    # Standardized effect size is undefined
+    # when both windows have effectively zero variance.
+    if pooled <= 1e-12:
+        return 0.0
 
     return difference / pooled
 
+def _pooled_std(
+    before: pd.Series,
+    after: pd.Series,
+) -> float:
+    """
+    Calculate pooled standard deviation for the
+    before/after windows.
+
+    Used to identify near-deterministic voting shifts
+    where standardized effect size is undefined.
+    """
+
+    if before.empty or after.empty:
+        return 0.0
+
+    before = pd.to_numeric(
+        before,
+        errors="coerce",
+    ).dropna()
+
+    after = pd.to_numeric(
+        after,
+        errors="coerce",
+    ).dropna()
+
+    if before.empty or after.empty:
+        return 0.0
+
+    std_before = float(
+        before.std(ddof=1)
+    )
+
+    std_after = float(
+        after.std(ddof=1)
+    )
+
+    if math.isnan(std_before):
+        std_before = 0.0
+
+    if math.isnan(std_after):
+        std_after = 0.0
+
+    return math.sqrt(
+        (
+            std_before ** 2
+            + std_after ** 2
+        ) / 2.0
+    )
 
 def _persistence_score(
     values: pd.Series,
@@ -123,42 +184,14 @@ def detect_change_points(
     df: pd.DataFrame,
     value_column: str = "position_score",
     year_column: str = "year",
-    country_column: str = "ms_code",
-    issue_column: str = "subject",
+    country_column: str = "country_code",
+    issue_column: str = "issue",
     before_window: int = 3,
     after_window: int = 3,
-    magnitude_threshold: float = 0.3,
+    magnitude_threshold: float = 0.4,
     effect_threshold: float = 0.8,
     persistence_window: int = 3,
 ) -> pd.DataFrame:
-    """
-    Detect candidate and confirmed change points.
-
-    Parameters
-    ----------
-    df:
-        Issue-level country position time series.
-
-    value_column:
-        Numeric position score.
-
-    before_window:
-        Number of observations used before a candidate.
-
-    after_window:
-        Number of observations used after a candidate.
-
-    magnitude_threshold:
-        Minimum absolute change in normalized position score.
-        Position scores use the [-1, +1] scale.
-
-    effect_threshold:
-        Minimum standardized effect size.
-
-    persistence_window:
-        Minimum number of subsequent observations required
-        for confirmation.
-    """
 
     required = {
         value_column,
@@ -273,22 +306,37 @@ def detect_change_points(
                 after,
             )
 
-            if (
-                magnitude
-                < magnitude_threshold
-                or effect
-                < effect_threshold
+            pooled_std = _pooled_std(
+                before,
+                after,
+            )
+
+            low_variance_shift = (
+                pooled_std <= 1e-12
+            )
+
+            passes_statistical_rule = (
+                magnitude >= magnitude_threshold
+                and effect >= effect_threshold
+            )
+
+            passes_deterministic_rule = (
+                magnitude >= magnitude_threshold
+                and low_variance_shift
+            )
+
+            if not (
+                passes_statistical_rule
+                or passes_deterministic_rule
             ):
                 continue
 
-            persistence = (
-                _persistence_score(
-                    values,
-                    index,
-                    mean_before,
-                    magnitude_threshold,
-                    persistence_window,
-                )
+            persistence = _persistence_score(
+                values,
+                index,
+                mean_before,
+                magnitude_threshold,
+                persistence_window,
             )
 
             confirmed = (
@@ -296,17 +344,18 @@ def detect_change_points(
                 >= persistence_window
             )
 
-            # Confidence is deliberately transparent:
-            # magnitude, effect and persistence contribute.
             magnitude_score = min(
-                magnitude / 30.0,
+                magnitude / 2.0,
                 1.0,
             )
 
-            effect_score = min(
-                effect / 2.0,
-                1.0,
-            )
+            if low_variance_shift:
+                effect_score = 1.0
+            else:
+                effect_score = min(
+                    effect / 2.0,
+                    1.0,
+                )
 
             persistence_score = min(
                 persistence
@@ -328,8 +377,8 @@ def detect_change_points(
 
             rows.append(
                 {
-                    "ms_code": country,
-                    "subject": issue,
+                    "country_code": country,
+                    "issue": issue,
                     "change_year": int(
                         years.iloc[index]
                     ),
@@ -350,6 +399,8 @@ def detect_change_points(
                         3,
                     ),
                     "persistence": persistence,
+                    "low_variance_shift":
+                        low_variance_shift,
                     "confirmed": confirmed,
                     "confidence": confidence,
                 }
@@ -358,14 +409,15 @@ def detect_change_points(
     if not rows:
         return pd.DataFrame(
             columns=[
-                "ms_code",
-                "subject",
+                "country_code",
+                "issue",
                 "change_year",
                 "mean_before",
                 "mean_after",
                 "change_magnitude",
                 "effect_size",
                 "persistence",
+                "low_variance_shift",
                 "confirmed",
                 "confidence",
             ]
@@ -383,7 +435,6 @@ def detect_change_points(
         )
         .reset_index(drop=True)
     )
-
 def consolidate_change_points(
     changes: pd.DataFrame,
     min_separation: int = 3,
@@ -400,8 +451,8 @@ def consolidate_change_points(
         return changes.copy()
 
     required = {
-        "ms_code",
-        "subject",
+        "country_code",
+        "issue",
         "change_year",
         "confidence",
     }
@@ -423,8 +474,8 @@ def consolidate_change_points(
         .copy()
         .sort_values(
             [
-                "ms_code",
-                "subject",
+                "country_code",
+                "issue",
                 "change_year",
                 "confidence",
             ],
@@ -441,7 +492,7 @@ def consolidate_change_points(
     kept = []
 
     for _, group in working.groupby(
-        ["ms_code", "subject"],
+        ["country_code", "issue"],
         dropna=False,
     ):
         cluster = []
@@ -481,8 +532,8 @@ def consolidate_change_points(
         pd.DataFrame(kept)
         .sort_values(
             [
-                "ms_code",
-                "subject",
+                "country_code",
+                "issue",
                 "change_year",
             ]
         )
