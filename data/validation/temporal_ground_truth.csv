@@ -1,0 +1,10 @@
+country_a,country_b,event_start,event_end,event_name,event_type,expected_direction,voting_relevance,source
+CHN,RUS,2001,2001,Sino-Russian Treaty of Good-Neighborliness and Friendly Cooperation,diplomatic,1,high,China MFA
+CHN,USA,1989,1990,Tiananmen crackdown and U.S. sanctions,diplomatic,-1,high,U.S. State Department
+IND,CHN,1988,1988,Rajiv Gandhi China visit and normalization, diplomatic,1,high,India MEA
+IND,CHN,2020,2021,India-China LAC crisis,conflict,-1,high,India MEA
+IND,RUS,1993,1993,India-Russia Treaty of Friendship and Cooperation,diplomatic,1,high,India MEA
+IND,RUS,2000,2000,India-Russia Declaration on Strategic Partnership,diplomatic,1,high,India MEA
+IND,USA,1998,2000,Indian nuclear tests and U.S. sanctions,nuclear_diplomatic,-1,high,U.S. State Department
+IND,USA,2005,2006,U.S.-India Strategic Partnership and Civil Nuclear Initiative,strategic_partnership,1,high,U.S. State Department
+USA,RUS,2014,2014,Crimea intervention and U.S. sanctions,conflict_diplomatic,-1,high,U.S. State Department
