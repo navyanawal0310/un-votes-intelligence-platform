@@ -1,0 +1,10 @@
+country_a,country_b,event_start,event_end,event_name,event_type,pre_mean,event_mean,absolute_shift,normalized_shift,pre_observations,event_observations,nearest_change_year,detection_distance,change_point_magnitude,change_point_effect_size,change_point_confidence,change_point_confirmed,strict_detected,tolerance_detected
+CHN,RUS,2001,2001,Sino-Russian Treaty of Good-Neighborliness and Friendly Cooperation,diplomatic,0.8533222222222222,0.8875,0.03417777777777775,0.1025282069229871,18,4,,,,,,False,False,False
+CHN,USA,1989,1990,Tiananmen crackdown and U.S. sanctions,diplomatic,0.27494999999999997,0.2167925,0.05815749999999997,0.05815749999999997,39,20,,,,,,False,False,False
+IND,CHN,1988,1988,Rajiv Gandhi China visit and normalization, diplomatic,,,,,0,0,,,,,,False,False,False
+IND,CHN,2020,2021,India-China LAC crisis,conflict,,,,,0,0,,,,,,False,False,False
+IND,RUS,1993,1993,India-Russia Treaty of Friendship and Cooperation,diplomatic,0.6421333333333333,0.6011928571428572,0.04094047619047614,0.04678911564625844,6,7,1997.0,4.0,0.105,3.089,0.368,False,False,True
+IND,RUS,2000,2000,India-Russia Declaration on Strategic Partnership,diplomatic,0.8358368421052632,0.9297666666666666,0.09392982456140342,0.2191805496707582,19,6,2000.0,0.0,0.111,3.693,0.669,True,True,True
+IND,USA,1998,2000,Indian nuclear tests and U.S. sanctions,nuclear_diplomatic,0.26152727272727266,0.2479333333333333,0.013593939393939353,0.014830021702873892,22,18,2023.0,23.0,0.115,8.438,0.67,True,False,False
+IND,USA,2005,2006,U.S.-India Strategic Partnership and Civil Nuclear Initiative,strategic_partnership,0.16874999999999996,0.17734090909090908,0.008590909090909121,0.013745454545454594,16,11,2023.0,17.0,0.115,8.438,0.67,True,False,False
+USA,RUS,2014,2014,Crimea intervention and U.S. sanctions,conflict_diplomatic,,,,,0,0,,,,,,False,False,False
