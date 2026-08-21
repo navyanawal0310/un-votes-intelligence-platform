@@ -1,0 +1,15 @@
+component,weight,status,completion,files_found,files_required
+Core Data Pipeline,12,COMPLETE,100.0,3,3
+Pairwise Alignment Analytics,10,COMPLETE,100.0,2,2
+Temporal Alignment Analysis,10,COMPLETE,100.0,1,1
+Change-Point Detection,10,COMPLETE,100.0,2,2
+Historical Ground Truth,8,COMPLETE,100.0,2,2
+Temporal Event Validation,10,COMPLETE,100.0,2,2
+Quantitative Evaluation,8,COMPLETE,100.0,2,2
+Error Analysis,6,COMPLETE,100.0,1,1
+Robustness / Sensitivity,6,COMPLETE,100.0,1,1
+Null / Chance Baseline,5,COMPLETE,100.0,1,1
+Change-Point Explanation,5,COMPLETE,100.0,1,1
+Final Intelligence Layer,5,NOT_VERIFIED,0.0,0,0
+User-Facing Dashboard,3,NOT_VERIFIED,0.0,0,0
+Documentation / Reproducibility,2,NOT_VERIFIED,0.0,0,0
