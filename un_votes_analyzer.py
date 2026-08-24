@@ -2,225 +2,540 @@
 UN VOTES ANALYZER
 =================
 
-Final user-facing analytical layer.
+User-facing country-pair intelligence interface.
 
-This module consolidates previously validated analytical
-outputs into a simple country-pair intelligence interface.
+This module does NOT perform new statistical analysis.
 
-It does NOT perform new statistical analysis.
-It does NOT establish causality.
-It translates existing validated measurements into
-structured, interpretable results.
+It consumes the canonical analytical pipeline and presents
+validated analytical evidence for a selected country pair.
 """
 
 from pathlib import Path
 import pandas as pd
 
+from analytical_pipeline import (
+    load_pipeline,
+    available_pairs,
+    get_pair_bundle,
+    evidence_status,
+)
+
+
 BASE_DIR = Path(__file__).resolve().parent
 
-SCORECARD_FILE = BASE_DIR / "temporal_country_pair_scorecard.csv"
-TEMPORAL_FILE = BASE_DIR / "country_pair_temporal_alignment.csv"
-CHANGE_POINT_FILE = BASE_DIR / "temporal_alignment_change_points.csv"
-EVENT_FILE = BASE_DIR / "temporal_event_conditioned_detection.csv"
-ROBUSTNESS_FILE = BASE_DIR / "temporal_robustness_analysis.csv"
-NULL_FILE = BASE_DIR / "temporal_null_baseline.csv"
 
+# ============================================================
+# SAFE VALUE HELPERS
+# ============================================================
 
-def load_data():
-    return {
-        "scorecard": pd.read_csv(SCORECARD_FILE),
-        "temporal": pd.read_csv(TEMPORAL_FILE),
-        "change_points": pd.read_csv(CHANGE_POINT_FILE),
-        "event": pd.read_csv(EVENT_FILE),
-        "robustness": pd.read_csv(ROBUSTNESS_FILE),
-        "null": pd.read_csv(NULL_FILE),
-    }
-
-
-def normalize_country_code(country):
-    """Normalize user input without imposing pair orientation."""
-    return str(country).upper().strip()
-
-
-def find_pair(scorecard, country_a, country_b):
+def safe_float(value):
     """
-    Find a country pair regardless of input order.
-
-    The scorecard has its own canonical orientation, e.g.
-    IND-CHN and USA-RUS. It is therefore incorrect to assume
-    alphabetical ordering when constructing the lookup key.
+    Convert a value to float when possible.
+    Return None for missing/non-numeric values.
     """
-    country_a = normalize_country_code(country_a)
-    country_b = normalize_country_code(country_b)
 
-    if not country_a or not country_b or country_a == country_b:
+    try:
+        value = float(value)
+
+        if pd.isna(value):
+            return None
+
+        return value
+
+    except (TypeError, ValueError):
         return None
 
-    pairs = (
-        scorecard["pair"]
-        .astype(str)
-        .str.upper()
-        .str.strip()
-    )
 
-    forward = f"{country_a}-{country_b}"
-    reverse = f"{country_b}-{country_a}"
+def format_float(value, digits=3):
+    """
+    Format numerical values safely.
+    """
 
-    matches = scorecard[pairs.isin([forward, reverse])]
+    value = safe_float(value)
 
-    if matches.empty:
-        return None
+    if value is None:
+        return "N/A"
 
-    return matches.iloc[0]
+    return f"{value:.{digits}f}"
 
 
-def interpret_trend(row):
-    trend = str(row.get("interpreted_trend", "")).upper()
+# ============================================================
+# TREND INTERPRETATION
+# ============================================================
 
-    if trend == "IMPROVING":
-        return "increasing"
-    if trend == "DECLINING":
-        return "decreasing"
-    if trend == "STABLE":
-        return "broadly stable"
+def interpret_trend(scorecard_row):
+    """
+    Convert the scorecard trend into user-facing language.
+    """
 
-    return "uncertain"
-
-
-def evidence_status(data):
-    return {
-        "Temporal alignment": not data["temporal"].empty,
-        "Change-point analysis": not data["change_points"].empty,
-        "Event-conditioned analysis": not data["event"].empty,
-        "Robustness analysis": not data["robustness"].empty,
-        "Null baseline": not data["null"].empty,
-    }
-
-
-def analyze_pair(country_a, country_b, data):
-    country_a = normalize_country_code(country_a)
-    country_b = normalize_country_code(country_b)
-
-    row = find_pair(
-        data["scorecard"],
-        country_a,
-        country_b,
-    )
-
-    if row is None:
-        raise ValueError(
-            f"No analytical result found for {country_a}-{country_b}"
+    trend = str(
+        scorecard_row.get(
+            "interpreted_trend",
+            "INSUFFICIENT_EVIDENCE"
         )
+    ).upper()
 
-    # Always display the pair using the scorecard's canonical orientation.
-    pair = str(row["pair"]).upper().strip()
-
-    return {
-        "pair": pair,
-        "historical_alignment": row.get("historical_alignment"),
-        "recent_alignment": row.get("recent_alignment"),
-        "temporal_change": row.get("temporal_change"),
-        "trend": interpret_trend(row),
-        "strongest_change_year": row.get("strongest_change_year"),
-        "max_change_magnitude": row.get("max_change_magnitude"),
-        "confidence": row.get("confidence", "MODERATE"),
-        "evidence": evidence_status(data),
+    mapping = {
+        "IMPROVING": "increasing",
+        "DECLINING": "decreasing",
+        "STABLE": "broadly stable",
+        "INSUFFICIENT_EVIDENCE": "uncertain",
     }
 
-
-def print_result(result):
-    print()
-    print("=" * 64)
-    print("UN VOTES ANALYZER")
-    print("=" * 64)
-    print()
-    print(f"COUNTRY PAIR: {result['pair']}")
-
-    print()
-    print("CURRENT ALIGNMENT")
-    print(f"{result['recent_alignment']:.3f}")
-
-    print()
-    print("HISTORICAL ALIGNMENT")
-    print(f"{result['historical_alignment']:.3f}")
-
-    print()
-    print("TEMPORAL CHANGE")
-    print(f"{result['temporal_change']:+.3f}")
-
-    print()
-    print("TREND")
-    print(result["trend"].upper())
-
-    if pd.notna(result["strongest_change_year"]):
-        print()
-        print("STRONGEST DETECTED CHANGE")
-        print(f"{int(result['strongest_change_year'])}")
-
-        if pd.notna(result["max_change_magnitude"]):
-            print(
-                "Magnitude: "
-                f"{result['max_change_magnitude']:.3f}"
-            )
-
-    print()
-    print("CONFIDENCE")
-    print(result["confidence"])
-
-    print()
-    print("INTERPRETATION")
-    print(
-        f"{result['pair']} voting alignment shows "
-        f"{result['trend']} movement over the observed period."
+    return mapping.get(
+        trend,
+        "uncertain"
     )
-    print(
-        f"The current alignment is approximately "
-        f"{result['recent_alignment']:.3f}, compared with "
-        f"historical alignment of "
-        f"{result['historical_alignment']:.3f}."
+
+
+# ============================================================
+# BUILD RESULT
+# ============================================================
+
+def analyze_pair(
+    country_a,
+    country_b,
+    pipeline,
+):
+    """
+    Build a complete country-pair intelligence result.
+
+    The canonical analytical pipeline handles:
+
+        country-pair normalization
+        scorecard lookup
+        temporal evidence
+        change points
+        quantitative evaluation
+        event analysis
+        attribution
+        robustness
+        null baseline
+    """
+
+    bundle = get_pair_bundle(
+        pipeline,
+        country_a,
+        country_b
     )
-    print(
-        "This describes observed UN voting-alignment patterns; "
-        "it does not establish political intent, diplomatic "
-        "motivation, or causality."
+
+    scorecard = bundle["scorecard"]
+
+    evidence = evidence_status(
+        bundle
     )
+
+    result = {
+        "pair": bundle["pair"],
+
+        "pair_key": bundle["pair_key"],
+
+        "historical_alignment":
+            scorecard.get(
+                "historical_alignment"
+            ),
+
+        "recent_alignment":
+            scorecard.get(
+                "recent_alignment"
+            ),
+
+        "temporal_change":
+            scorecard.get(
+                "temporal_change"
+            ),
+
+        "trend":
+            interpret_trend(
+                scorecard
+            ),
+
+        "interpreted_trend":
+            scorecard.get(
+                "interpreted_trend"
+            ),
+
+        "strongest_change_year":
+            scorecard.get(
+                "strongest_change_year"
+            ),
+
+        "max_change_magnitude":
+            scorecard.get(
+                "max_change_magnitude"
+            ),
+
+        "confidence":
+            scorecard.get(
+                "confidence",
+                "UNKNOWN"
+            ),
+
+        "validation_recall":
+            scorecard.get(
+                "validation_recall"
+            ),
+
+        "detection_coverage":
+            scorecard.get(
+                "detection_coverage"
+            ),
+
+        "evidence_count":
+            scorecard.get(
+                "evidence_count",
+                0
+            ),
+
+        "evidence":
+            evidence,
+
+        "bundle":
+            bundle,
+    }
+
+    return result
+
+
+# ============================================================
+# PRINT EVIDENCE
+# ============================================================
+
+def print_evidence(result):
 
     print()
     print("EVIDENCE")
+
     for name, available in result["evidence"].items():
+
         symbol = "✓" if available else "–"
-        print(f"{symbol} {name}")
+
+        print(
+            f"{symbol} {name}"
+        )
+
+
+# ============================================================
+# PRINT RESULT
+# ============================================================
+
+def print_result(result):
 
     print()
-    print("=" * 64)
+    print("=" * 72)
+    print("UN VOTES ANALYZER")
+    print("=" * 72)
 
+    print()
 
-def main():
-    print("Loading validated analytical outputs...")
-    data = load_data()
-
-    print("Available country pairs:")
-    pairs = sorted(
-        data["scorecard"]["pair"]
-        .dropna()
-        .astype(str)
-        .unique()
+    print(
+        f"COUNTRY PAIR: {result['pair']}"
     )
 
-    for pair in pairs:
-        print(f"  {pair}")
+    print()
+
+    print("CURRENT ALIGNMENT")
+
+    print(
+        format_float(
+            result["recent_alignment"]
+        )
+    )
 
     print()
 
-    country_a = input("Enter first country code: ")
-    country_b = input("Enter second country code: ")
+    print("HISTORICAL ALIGNMENT")
+
+    print(
+        format_float(
+            result["historical_alignment"]
+        )
+    )
+
+    print()
+
+    print("TEMPORAL CHANGE")
+
+    change = safe_float(
+        result["temporal_change"]
+    )
+
+    if change is None:
+
+        print("N/A")
+
+    else:
+
+        print(
+            f"{change:+.3f}"
+        )
+
+    print()
+
+    print("TREND")
+
+    print(
+        result["trend"].upper()
+    )
+
+    # --------------------------------------------------------
+    # Change point
+    # --------------------------------------------------------
+
+    year = safe_float(
+        result["strongest_change_year"]
+    )
+
+    magnitude = safe_float(
+        result["max_change_magnitude"]
+    )
+
+    if year is not None:
+
+        print()
+
+        print(
+            "STRONGEST DETECTED CHANGE"
+        )
+
+        print(
+            f"{int(year)}"
+        )
+
+        if magnitude is not None:
+
+            print(
+                f"Magnitude: {magnitude:.3f}"
+            )
+
+    # --------------------------------------------------------
+    # Confidence
+    # --------------------------------------------------------
+
+    print()
+
+    print("CONFIDENCE")
+
+    print(
+        str(
+            result["confidence"]
+        ).upper()
+    )
+
+    # --------------------------------------------------------
+    # Validation metrics
+    # --------------------------------------------------------
+
+    recall = safe_float(
+        result["validation_recall"]
+    )
+
+    coverage = safe_float(
+        result["detection_coverage"]
+    )
+
+    if recall is not None:
+
+        print()
+
+        print(
+            "VALIDATION RECALL"
+        )
+
+        print(
+            f"{recall:.3f}"
+        )
+
+    if coverage is not None:
+
+        print()
+
+        print(
+            "DETECTION COVERAGE"
+        )
+
+        print(
+            f"{coverage:.3f}"
+        )
+
+    # --------------------------------------------------------
+    # Evidence count
+    # --------------------------------------------------------
+
+    print()
+
+    print(
+        "EVIDENCE LAYERS"
+    )
+
+    print(
+        str(
+            result["evidence_count"]
+        )
+    )
+
+    # --------------------------------------------------------
+    # Interpretation
+    # --------------------------------------------------------
+
+    print()
+
+    print("INTERPRETATION")
+
+    current = safe_float(
+        result["recent_alignment"]
+    )
+
+    historical = safe_float(
+        result["historical_alignment"]
+    )
+
+    if (
+        current is not None
+        and historical is not None
+    ):
+
+        print(
+            f"{result['pair']} voting alignment "
+            f"shows {result['trend']} movement "
+            f"over the observed period."
+        )
+
+        print(
+            f"The current alignment is approximately "
+            f"{current:.3f}, compared with historical "
+            f"alignment of {historical:.3f}."
+        )
+
+    else:
+
+        print(
+            f"{result['pair']} does not have sufficient "
+            f"alignment measurements for a complete "
+            f"temporal interpretation."
+        )
+
+    print()
+
+    print(
+        "This describes observed UN voting-alignment "
+        "patterns; it does not establish political "
+        "intent, diplomatic motivation, or causality."
+    )
+
+    # --------------------------------------------------------
+    # Evidence
+    # --------------------------------------------------------
+
+    print_evidence(
+        result
+    )
+
+    print()
+
+    print("=" * 72)
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+def main():
+
+    print(
+        "Loading validated analytical pipeline..."
+    )
 
     try:
-        result = analyze_pair(country_a, country_b, data)
-        print_result(result)
-    except ValueError as error:
+
+        pipeline = load_pipeline()
+
+    except Exception as error:
+
         print()
-        print(f"ERROR: {error}")
+        print(
+            f"ERROR loading analytical pipeline: {error}"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Pipeline status
+    # --------------------------------------------------------
+
+    print()
+
+    print(
+        "Available country pairs:"
+    )
+
+    pairs = available_pairs(
+        pipeline
+    )
+
+    if not pairs:
+
+        print(
+            "  No country pairs available."
+        )
+
+        return
+
+    for pair in pairs:
+
+        print(
+            f"  {pair}"
+        )
+
+    print()
+
+    # --------------------------------------------------------
+    # User input
+    # --------------------------------------------------------
+
+    country_a = input(
+        "Enter first country code: "
+    )
+
+    country_b = input(
+        "Enter second country code: "
+    )
+
+    # --------------------------------------------------------
+    # Analysis
+    # --------------------------------------------------------
+
+    try:
+
+        result = analyze_pair(
+            country_a,
+            country_b,
+            pipeline
+        )
+
+        print_result(
+            result
+        )
+
+    except ValueError as error:
+
+        print()
+
+        print(
+            f"ERROR: {error}"
+        )
+
+    except Exception as error:
+
+        print()
+
+        print(
+            "UNEXPECTED PIPELINE ERROR:"
+        )
+
+        print(
+            f"{type(error).__name__}: {error}"
+        )
 
 
 if __name__ == "__main__":

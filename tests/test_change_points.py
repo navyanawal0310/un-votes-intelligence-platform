@@ -29,8 +29,8 @@ for year in range(2000, 2011):
 
     rows.append(
         {
-            "ms_code": "TST",
-            "subject": "TEST ISSUE",
+            "country_code": "TST",
+            "issue": "TEST ISSUE",
             "year": year,
             "position_score": position,
         }

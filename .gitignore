@@ -34,3 +34,23 @@ data/warehouse/*.duckdb.wal
 
 # Processed data
 data/processed/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Data artifacts
+data/bronze/
+data/silver/
+data/gold/
+
+# Generated analytical outputs
+*.parquet
+*.csv
+
+# Keep directory structure
+!data/bronze/.gitkeep
+!data/silver/.gitkeep
+!data/gold/.gitkeep

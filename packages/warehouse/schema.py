@@ -20,7 +20,7 @@ def create_schema(con: duckdb.DuckDBPyConnection) -> None:
         """
         CREATE TABLE IF NOT EXISTS dim_body (
             body_id INTEGER PRIMARY KEY,
-            body_code VARCHAR NOT NULL,
+            body_code VARCHAR NOT NULL UNIQUE,
             body_name VARCHAR NOT NULL
         )
         """
@@ -34,8 +34,32 @@ def create_schema(con: duckdb.DuckDBPyConnection) -> None:
         """
         CREATE TABLE IF NOT EXISTS dim_country (
             country_id INTEGER PRIMARY KEY,
-            ms_code VARCHAR NOT NULL,
+            ms_code VARCHAR NOT NULL UNIQUE,
             country_name VARCHAR NOT NULL
+        )
+        """
+    )
+
+    # ---------------------------------------------------------
+    # Country-pair dimension
+    # ---------------------------------------------------------
+
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS dim_country_pair (
+            pair_id INTEGER PRIMARY KEY,
+            country_a_id INTEGER NOT NULL,
+            country_b_id INTEGER NOT NULL,
+            canonical_pair VARCHAR NOT NULL UNIQUE,
+
+            CONSTRAINT country_pair_order
+                CHECK (country_a_id < country_b_id),
+
+            CONSTRAINT country_pair_not_self
+                CHECK (country_a_id <> country_b_id),
+
+            CONSTRAINT country_pair_unique
+                UNIQUE (country_a_id, country_b_id)
         )
         """
     )
@@ -65,7 +89,7 @@ def create_schema(con: duckdb.DuckDBPyConnection) -> None:
     # ---------------------------------------------------------
 
     con.execute(
-    """
+        """
         CREATE TABLE IF NOT EXISTS dim_resolution (
             resolution_id INTEGER PRIMARY KEY,
             resolution_code VARCHAR NOT NULL,
@@ -74,7 +98,10 @@ def create_schema(con: duckdb.DuckDBPyConnection) -> None:
             subjects VARCHAR,
             session VARCHAR,
             undl_id BIGINT,
-            undl_link VARCHAR
+            undl_link VARCHAR,
+
+            CONSTRAINT resolution_code_unique
+                UNIQUE (resolution_code)
         )
         """
     )
