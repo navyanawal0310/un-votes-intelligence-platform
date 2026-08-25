@@ -116,6 +116,9 @@ ARTIFACTS = {
 
     "intelligence":
         "temporal_country_pair_intelligence.csv",
+    
+    "relationship_state":
+        "data/gold/analytical/country_pair_relationships.parquet",
 }
 
 
@@ -127,7 +130,10 @@ def load_artifact(path):
 
     try:
 
-        df = pd.read_csv(path)
+        if path.suffix.lower() == ".parquet":
+            df = pd.read_parquet(path)
+        else:
+            df = pd.read_csv(path)
 
         return df
 
@@ -252,6 +258,90 @@ def validate_country_pairs():
     return len(pairs) > 0
 
 
+def validate_relationship_state():
+
+    path = (
+        BASE_DIR /
+        ARTIFACTS["relationship_state"]
+    )
+
+    if not path.exists():
+
+        print(
+            "[FAIL] Relationship-state artifact "
+            "does not exist."
+        )
+
+        return False
+
+    try:
+        df = pd.read_parquet(path)
+
+    except Exception as error:
+
+        print(
+            f"[FAIL] Could not read relationship-state "
+            f"artifact: {error}"
+        )
+
+        return False
+
+    required = {
+        "country_a",
+        "country_b",
+        "year",
+        "relationship_direction",
+    }
+
+    missing = required - set(df.columns)
+
+    if missing:
+
+        print(
+            "[FAIL] Relationship-state missing "
+            f"columns: {sorted(missing)}"
+        )
+
+        return False
+
+    pairs = (
+        df[["country_a", "country_b"]]
+        .drop_duplicates()
+        .shape[0]
+    )
+
+    countries = len(
+        set(df["country_a"])
+        | set(df["country_b"])
+    )
+
+    print()
+    print("=" * 80)
+    print("RELATIONSHIP STATE")
+    print("=" * 80)
+
+    print(
+        f"[OK] Rows: {len(df):,}"
+    )
+
+    print(
+        f"[OK] Country pairs: {pairs:,}"
+    )
+
+    print(
+        f"[OK] Countries: {countries:,}"
+    )
+
+    print(
+        "[OK] Relationship-state artifact valid"
+    )
+
+    return (
+        len(df) > 0
+        and pairs > 0
+        and countries > 0
+    )
+
 # ============================================================
 # CANONICAL PIPELINE CHECK
 # ============================================================
@@ -314,6 +404,7 @@ def validate_canonical_pipeline():
 def print_summary(
     artifact_results,
     pair_ok,
+    relationship_ok,
     canonical_ok,
 ):
 
@@ -391,6 +482,9 @@ def main():
         validate_country_pairs()
     )
 
+    relationship_ok = (
+        validate_relationship_state()
+    )
     canonical_ok = (
         validate_canonical_pipeline()
     )
@@ -398,11 +492,16 @@ def main():
     print_summary(
         artifact_results,
         pair_ok,
+        relationship_ok,
         canonical_ok,
     )
-
+    print(
+        f"Relationship state: "
+        f"{'PASS' if relationship_ok else 'FAIL'}"
+    )
     if (
         not pair_ok
+        or not relationship_ok
         or not canonical_ok
     ):
 

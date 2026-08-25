@@ -435,6 +435,407 @@ def detect_change_points(
         )
         .reset_index(drop=True)
     )
+
+def detect_pair_change_points(
+    df: pd.DataFrame,
+    value_column: str = "mean_alignment",
+    year_column: str = "window_end",
+    country_a_column: str = "country_a",
+    country_b_column: str = "country_b",
+    before_window: int = 3,
+    after_window: int = 3,
+    magnitude_threshold: float = 0.10,
+    effect_threshold: float = 0.80,
+    persistence_window: int = 3,
+) -> pd.DataFrame:
+    """
+    Vectorized country-pair change-point detector.
+
+    Uses DuckDB window functions rather than Python loops.
+
+    Statistical definition:
+        - before window: previous `before_window` observations
+        - after window: current + next `after_window - 1`
+        - magnitude: absolute difference between window means
+        - effect: pooled-standard-deviation standardized difference
+        - confirmation: persistent deviation from the pre-change baseline
+
+    This is the pair-level analogue of the validated
+    issue-level change-point detector.
+    """
+
+    import duckdb
+
+    required = {
+        value_column,
+        year_column,
+        country_a_column,
+        country_b_column,
+    }
+
+    missing = required - set(df.columns)
+
+    if missing:
+        raise ValueError(
+            "Missing required columns: "
+            f"{sorted(missing)}"
+        )
+
+    if before_window < 1:
+        raise ValueError(
+            "before_window must be >= 1"
+        )
+
+    if after_window < 1:
+        raise ValueError(
+            "after_window must be >= 1"
+        )
+
+    if persistence_window < 1:
+        raise ValueError(
+            "persistence_window must be >= 1"
+        )
+
+    working = df[
+        [
+            country_a_column,
+            country_b_column,
+            year_column,
+            value_column,
+        ]
+    ].copy()
+
+    working[year_column] = pd.to_numeric(
+        working[year_column],
+        errors="coerce",
+    )
+
+    working[value_column] = pd.to_numeric(
+        working[value_column],
+        errors="coerce",
+    )
+
+    working = working.dropna(
+        subset=[
+            country_a_column,
+            country_b_column,
+            year_column,
+            value_column,
+        ]
+    )
+
+    if working.empty:
+        return pd.DataFrame(
+            columns=[
+                "country_a",
+                "country_b",
+                "change_year",
+                "mean_before",
+                "mean_after",
+                "change_magnitude",
+                "effect_size",
+                "persistence",
+                "low_variance_shift",
+                "confirmed",
+                "confidence",
+            ]
+        )
+
+    con = duckdb.connect()
+
+    try:
+
+        con.register(
+            "temporal_alignment",
+            working,
+        )
+
+        query = f"""
+        WITH ordered AS (
+
+            SELECT
+
+                {country_a_column} AS country_a,
+                {country_b_column} AS country_b,
+                CAST({year_column} AS INTEGER) AS change_year,
+                CAST({value_column} AS DOUBLE) AS value,
+
+                ROW_NUMBER() OVER (
+                    PARTITION BY
+                        {country_a_column},
+                        {country_b_column}
+                    ORDER BY
+                        {year_column}
+                ) AS row_number
+
+            FROM temporal_alignment
+
+        ),
+
+        windows AS (
+
+            SELECT
+
+                country_a,
+                country_b,
+                change_year,
+                value,
+                row_number,
+
+                AVG(value) OVER (
+                    PARTITION BY
+                        country_a,
+                        country_b
+                    ORDER BY row_number
+                    ROWS BETWEEN
+                        {before_window} PRECEDING
+                        AND 1 PRECEDING
+                ) AS mean_before,
+
+                AVG(value) OVER (
+                    PARTITION BY
+                        country_a,
+                        country_b
+                    ORDER BY row_number
+                    ROWS BETWEEN
+                        CURRENT ROW
+                        AND {after_window - 1} FOLLOWING
+                ) AS mean_after,
+
+                STDDEV_SAMP(value) OVER (
+                    PARTITION BY
+                        country_a,
+                        country_b
+                    ORDER BY row_number
+                    ROWS BETWEEN
+                        {before_window} PRECEDING
+                        AND 1 PRECEDING
+                ) AS std_before,
+
+                STDDEV_SAMP(value) OVER (
+                    PARTITION BY
+                        country_a,
+                        country_b
+                    ORDER BY row_number
+                    ROWS BETWEEN
+                        CURRENT ROW
+                        AND {after_window - 1} FOLLOWING
+                ) AS std_after
+
+            FROM ordered
+
+        ),
+
+        statistics AS (
+
+            SELECT
+
+                *,
+                
+                ABS(
+                    mean_after - mean_before
+                ) AS change_magnitude,
+
+                SQRT(
+                    (
+                        COALESCE(std_before, 0.0)
+                        * COALESCE(std_before, 0.0)
+
+                        +
+
+                        COALESCE(std_after, 0.0)
+                        * COALESCE(std_after, 0.0)
+                    ) / 2.0
+                ) AS pooled_std
+
+            FROM windows
+
+            WHERE mean_before IS NOT NULL
+              AND mean_after IS NOT NULL
+
+        ),
+
+        effects AS (
+
+            SELECT
+
+                *,
+
+                CASE
+                    WHEN pooled_std <= 1e-12
+                    THEN 0.0
+
+                    ELSE
+                        change_magnitude
+                        / pooled_std
+                END AS effect_size,
+
+                CASE
+                    WHEN pooled_std <= 1e-12
+                    THEN TRUE
+                    ELSE FALSE
+                END AS low_variance_shift
+
+            FROM statistics
+
+        ),
+
+        candidates AS (
+
+            SELECT *
+
+            FROM effects
+
+            WHERE
+                (
+                    change_magnitude
+                    >= {magnitude_threshold}
+
+                    AND
+
+                    effect_size
+                    >= {effect_threshold}
+                )
+
+                OR
+
+                (
+                    change_magnitude
+                    >= {magnitude_threshold}
+
+                    AND
+
+                    low_variance_shift
+                )
+
+        ),
+
+        persistence AS (
+
+            SELECT
+
+                c.*,
+
+                COUNT(*) FILTER (
+                    WHERE
+                        ABS(
+                            future.value
+                            - c.mean_before
+                        )
+                        >= {magnitude_threshold}
+                ) AS persistence
+
+            FROM candidates c
+
+            LEFT JOIN ordered future
+
+                ON future.country_a = c.country_a
+                AND future.country_b = c.country_b
+
+                AND future.row_number
+                    BETWEEN
+                        c.row_number
+                        AND
+                        c.row_number
+                        + {persistence_window - 1}
+
+            GROUP BY ALL
+
+        )
+
+        SELECT
+
+            country_a,
+            country_b,
+            change_year,
+
+            ROUND(
+                mean_before,
+                6
+            ) AS mean_before,
+
+            ROUND(
+                mean_after,
+                6
+            ) AS mean_after,
+
+            ROUND(
+                change_magnitude,
+                6
+            ) AS change_magnitude,
+
+            ROUND(
+                effect_size,
+                6
+            ) AS effect_size,
+
+            CAST(
+                persistence AS INTEGER
+            ) AS persistence,
+
+            low_variance_shift,
+
+            (
+                persistence
+                >= {persistence_window}
+            ) AS confirmed,
+
+            ROUND(
+
+                (
+                    0.35
+                    * LEAST(
+                        change_magnitude / 2.0,
+                        1.0
+                    )
+
+                    +
+
+                    0.35
+                    * CASE
+                        WHEN low_variance_shift
+                        THEN 1.0
+                        ELSE LEAST(
+                            effect_size / 2.0,
+                            1.0
+                        )
+                      END
+
+                    +
+
+                    0.30
+                    * LEAST(
+                        persistence
+                        / GREATEST(
+                            {persistence_window},
+                            1
+                        ),
+                        1.0
+                    )
+
+                ),
+
+                3
+
+            ) AS confidence
+
+        FROM persistence
+
+        ORDER BY
+            confirmed DESC,
+            confidence DESC,
+            change_magnitude DESC
+        """
+
+        result = con.execute(
+            query
+        ).df()
+
+    finally:
+        con.close()
+
+    return result
+
 def consolidate_change_points(
     changes: pd.DataFrame,
     min_separation: int = 3,

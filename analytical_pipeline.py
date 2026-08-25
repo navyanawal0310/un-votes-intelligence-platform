@@ -48,6 +48,9 @@ DATA_SOURCES = {
 
     "change_points":
         "temporal_alignment_change_points.csv",
+    
+    "relationship_state":
+    "data/gold/analytical/country_pair_relationships.parquet",
 
     "ground_truth":
         "temporal_ground_truth.csv",
@@ -230,12 +233,12 @@ def add_pair_column(df):
 # LOAD SINGLE FILE
 # ============================================================
 
-def load_csv(filename, required=False):
+def load_data(filename, required=False):
     """
-    Load a CSV file.
+    Load an analytical data source.
 
-    Returns an empty DataFrame if an optional source
-    does not exist.
+    Supports CSV and Parquet while keeping the
+    analytical pipeline source-agnostic.
     """
 
     path = BASE_DIR / filename
@@ -243,7 +246,6 @@ def load_csv(filename, required=False):
     if not path.exists():
 
         if required:
-
             raise FileNotFoundError(
                 f"Required analytical file missing: {path}"
             )
@@ -252,7 +254,11 @@ def load_csv(filename, required=False):
 
     try:
 
-        df = pd.read_csv(path)
+        if path.suffix.lower() == ".parquet":
+            df = pd.read_parquet(path)
+
+        else:
+            df = pd.read_csv(path)
 
     except Exception as error:
 
@@ -262,7 +268,6 @@ def load_csv(filename, required=False):
         )
 
     return add_pair_column(df)
-
 
 # ============================================================
 # LOAD COMPLETE PIPELINE
@@ -281,7 +286,7 @@ def load_pipeline():
             name == "scorecard"
         )
 
-        df = load_csv(
+        df = load_data(
             filename,
             required=required
         )
@@ -323,11 +328,37 @@ def pipeline_status(pipeline):
 
 def available_pairs(pipeline):
     """
-    Return the country-pair names exactly as represented
-    by the scorecard.
+    Return all globally available country pairs.
+
+    Relationship state defines the analytical pair universe.
+    The scorecard is only a derived/benchmark layer.
     """
 
-    scorecard = pipeline["scorecard"]
+    relationship_state = pipeline.get(
+        "relationship_state",
+        pd.DataFrame()
+    )
+
+    if not relationship_state.empty:
+
+        relationship_state = add_pair_column(
+            relationship_state
+        )
+
+        return sorted(
+            relationship_state["pair_key"]
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+
+    # Fallback for older pipeline states
+
+    scorecard = pipeline.get(
+        "scorecard",
+        pd.DataFrame()
+    )
 
     if scorecard.empty:
         return []
@@ -344,7 +375,6 @@ def available_pairs(pipeline):
         .unique()
         .tolist()
     )
-
 # ============================================================
 # FIND SCORECARD ROW
 # ============================================================
@@ -415,12 +445,16 @@ def get_pair_bundle(
     Build the complete analytical evidence bundle
     for one country pair.
 
+    Country-pair availability is determined by the
+    global analytical layers, not by the benchmark
+    scorecard.
+
     User input can be in either order:
 
         IND + CHN
         CHN + IND
 
-    Both resolve to the same analytical record.
+    Both resolve to the same pair_key.
     """
 
     pair_key = normalize_pair(
@@ -428,29 +462,67 @@ def get_pair_bundle(
         country_b
     )
 
-    scorecard_row = find_scorecard_row(
-        pipeline,
-        pair_key
+    # --------------------------------------------------------
+    # Determine whether this pair exists globally
+    # --------------------------------------------------------
+
+    relationship_state = pipeline.get(
+        "relationship_state",
+        pd.DataFrame()
     )
 
-    if scorecard_row is None:
+    if relationship_state.empty:
+        raise ValueError(
+            "Relationship-state layer is unavailable."
+        )
 
+    relationship_state = add_pair_column(
+        relationship_state
+    )
+
+    pair_relationship = relationship_state[
+        relationship_state["pair_key"] == pair_key
+    ].copy()
+
+    if pair_relationship.empty:
         raise ValueError(
             f"No analytical result found for "
             f"{country_a}-{country_b}"
         )
 
-    # Preserve the scorecard's existing display name.
-    canonical_pair = str(
-        scorecard_row["pair"]
-    ).upper().strip()
+    # --------------------------------------------------------
+    # Scorecard is optional evidence
+    # --------------------------------------------------------
+
+    scorecard_row = find_scorecard_row(
+        pipeline,
+        pair_key
+    )
+
+    if scorecard_row is not None:
+        canonical_pair = str(
+            scorecard_row["pair"]
+        ).upper().strip()
+    else:
+        canonical_pair = pair_key
+
+    # --------------------------------------------------------
+    # Build complete analytical bundle
+    # --------------------------------------------------------
 
     bundle = {
         "pair": canonical_pair,
 
         "pair_key": pair_key,
 
-        "scorecard": scorecard_row,
+        "scorecard": (
+            scorecard_row
+            if scorecard_row is not None
+            else None
+        ),
+
+        "relationship_state":
+            pair_relationship,
 
         "temporal_alignment":
             filter_pair(
@@ -518,7 +590,6 @@ def get_pair_bundle(
 
     return bundle
 
-
 # ============================================================
 # EVIDENCE AVAILABILITY
 # ============================================================
@@ -534,7 +605,9 @@ def evidence_status(bundle):
     checks["Temporal alignment"] = (
         not bundle["temporal_alignment"].empty
     )
-
+    checks["Relationship state"] = (
+        not bundle["relationship_state"].empty
+    )
     checks["Change-point analysis"] = (
         not bundle["change_points"].empty
     )
@@ -622,11 +695,21 @@ def print_pipeline_status(pipeline):
         f"Available country pairs: {len(pairs)}"
     )
 
-    for pair in pairs:
+    print(
+        f"[OK] Available country pairs: {len(pairs):,}"
+    )
 
-        print(
-            f"  {pair}"
-        )
+    print(
+        "[OK] Pair universe is global; "
+        "individual pairs can be queried on demand."
+    )
+
+    print(
+        "[OK] Sample pairs:"
+    )
+
+    for pair in pairs[:10]:
+        print(f"     {pair}")
 
     print()
 
