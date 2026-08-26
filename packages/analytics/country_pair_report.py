@@ -45,6 +45,21 @@ def build_country_pair_report(
         country_a,
         country_b,
     )
+    substantive = profile[
+        "substantive_intelligence"
+    ]
+
+    substantive_summary = (
+        substantive["evidence_summary"]
+        if substantive is not None
+        else {
+            "subjects": 0,
+            "subject_trend_rows": 0,
+            "resolution_disagreements": 0,
+            "issue_rows_country_a": 0,
+            "issue_rows_country_b": 0,
+        }
+    )
 
     report = {
         "schema_version": "1.0",
@@ -70,7 +85,7 @@ def build_country_pair_report(
             ],
         },
 
-        "evidence": {
+                "evidence": {
             "evidence_count": profile[
                 "evidence_count"
             ],
@@ -87,6 +102,24 @@ def build_country_pair_report(
             "episode_attribution_rows": profile[
                 "evidence"
             ]["episode_attribution"],
+
+            "substantive": {
+                "subjects": substantive_summary[
+                    "subjects"
+                ],
+                "subject_trend_rows": substantive_summary[
+                    "subject_trend_rows"
+                ],
+                "resolution_disagreements": substantive_summary[
+                    "resolution_disagreements"
+                ],
+                "issue_rows_country_a": substantive_summary[
+                    "issue_rows_country_a"
+                ],
+                "issue_rows_country_b": substantive_summary[
+                    "issue_rows_country_b"
+                ],
+            },
         },
 
         "history": {
@@ -111,6 +144,21 @@ def build_country_pair_report(
         "change_points": (
             changes.to_dict(orient="records")
         ),
+        
+        "substantive_intelligence": {
+            "available": substantive is not None,
+            "evidence_source": (
+                substantive["evidence_source"]
+                if substantive is not None
+                else None
+            ),
+            "provenance": (
+                substantive["provenance"]
+                if substantive is not None
+                else None
+            ),
+            "summary": substantive_summary,
+        },
 
         "provenance": {
             "evidence_source": profile[

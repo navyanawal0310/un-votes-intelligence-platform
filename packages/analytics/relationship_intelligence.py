@@ -9,10 +9,9 @@ It only creates clean integration points for future
 evidence sources.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
+import duckdb
 import pandas as pd
 
 from analytical_pipeline import (
@@ -20,11 +19,16 @@ from analytical_pipeline import (
     load_pipeline,
 )
 
+from packages.analytics.substantive_intelligence import (
+    substantive_pair_intelligence,
+)
+from packages.warehouse.database import get_connection
 
 def relationship_profile(
     country_a: str,
     country_b: str,
     pipeline: dict[str, pd.DataFrame] | None = None,
+    con: duckdb.DuckDBPyConnection | None = None,
 ) -> dict[str, Any]:
     """
     Build an evidence-backed relationship profile
@@ -53,7 +57,22 @@ def relationship_profile(
         .sort_values("year")
         .iloc[-1]
     )
+    owns_connection = False
 
+    if con is None:
+        con = get_connection()
+        owns_connection = True
+
+    try:
+        substantive = substantive_pair_intelligence(
+            con,
+            country_a,
+            country_b,
+        )
+
+    finally:
+        if owns_connection:
+            con.close()
     profile = {
         "pair": bundle["pair"],
         "pair_key": bundle["pair_key"],
@@ -144,8 +163,11 @@ def relationship_profile(
         },
 
         # Future evidence integration point.
+        "substantive_intelligence": substantive,
+
+        # Future evidence integration point.
         "external_evidence": [],
-    }
+       }
 
     return profile
 
