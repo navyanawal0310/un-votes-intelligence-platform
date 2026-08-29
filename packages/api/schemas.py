@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
-
-
+from pydantic import BaseModel, field_validator
 class HealthResponse(BaseModel):
     status: str
     service: str
@@ -21,10 +19,18 @@ class RelationshipResponse(BaseModel):
     provenance: str
     evidence: dict[str, int] | None = None
 
+
 class QueryRequest(BaseModel):
     question: str
     country_a: str
     country_b: str
+
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Query question cannot be empty.")
+        return value
 
 
 class QueryResponse(BaseModel):

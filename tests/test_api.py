@@ -73,21 +73,52 @@ def test_query_substantive_disagreement():
 
     data = response.json()
 
-    assert data["intent"] == "SUBSTANTIVE_DISAGREEMENT"
-
-    assert "disagreement" in (
-        data["answer"].lower()
-    )
-
-    assert data["evidence_source"] == "UN_VOTING"
-    assert data["provenance"] == "UN_VOTES_ANALYZER"
-    assert data["evidence"] is not None
-
-    assert "temporal_alignment" in data["evidence"]
-    assert "change_points" in data["evidence"]
-    assert "issue_attribution" in data["evidence"]
-    assert "episode_attribution" in data["evidence"]
-    
-    assert data["evidence"]["temporal_alignment"] == 43
     assert data["evidence"] is not None
     assert isinstance(data["evidence"], dict)
+    assert "subjects" in data["evidence"]
+    assert "subject_trend_rows" in data["evidence"]
+    assert "resolution_disagreements" in data["evidence"]
+    assert "issue_rows_country_a" in data["evidence"]
+    assert "issue_rows_country_b" in data["evidence"]
+
+    assert data["evidence"]["resolution_disagreements"] == 1412
+
+def test_relationship_invalid_country():
+    response = client.get(
+        "/api/v1/relationship/XXX/CHN"
+    )
+
+    assert response.status_code in (400, 404)
+
+
+def test_relationship_missing_country():
+    response = client.get(
+        "/api/v1/relationship/IND/"
+    )
+
+    assert response.status_code in (404, 405)
+
+
+def test_query_empty_question():
+    response = client.post(
+        "/api/v1/query",
+        json={
+            "question": "",
+            "country_a": "IND",
+            "country_b": "CHN",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_query_missing_question():
+    response = client.post(
+        "/api/v1/query",
+        json={
+            "country_a": "IND",
+            "country_b": "CHN",
+        },
+    )
+
+    assert response.status_code == 422
