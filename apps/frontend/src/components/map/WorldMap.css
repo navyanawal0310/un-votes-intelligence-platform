@@ -1,0 +1,65 @@
+.world-map-container {
+  position: relative;
+}
+
+.map-instruction {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  width: 245px;
+  padding: 12px 14px;
+
+  background: rgba(250, 249, 245, 0.94);
+  border: 1px solid #c9cdc7;
+
+  color: #18352a;
+  box-shadow: 0 3px 12px rgba(20, 35, 28, 0.08);
+}
+
+.map-instruction-icon {
+  flex: 0 0 auto;
+
+  width: 20px;
+  height: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #18352a;
+  border-radius: 50%;
+
+  font-family: Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.map-instruction-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.map-instruction-text strong {
+  margin-bottom: 2px;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.map-instruction-text span {
+  color: #52645c;
+}

@@ -375,6 +375,36 @@ def available_pairs(pipeline):
         .unique()
         .tolist()
     )
+
+def available_countries(pipeline):
+    """
+    Return all countries represented in the analytical
+    relationship-state universe.
+    """
+
+    relationship_state = pipeline.get(
+        "relationship_state",
+        pd.DataFrame()
+    )
+
+    if relationship_state.empty:
+        return []
+
+    countries = set()
+
+    for column in ("country_a", "country_b"):
+        if column in relationship_state.columns:
+            countries.update(
+                relationship_state[column]
+                .dropna()
+                .astype(str)
+                .str.upper()
+                .str.strip()
+                .tolist()
+            )
+
+    return sorted(countries)
+
 # ============================================================
 # FIND SCORECARD ROW
 # ============================================================

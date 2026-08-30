@@ -40,6 +40,8 @@ __pycache__/
 *.py[cod]
 .venv/
 .env
+.env.*
+!.env.example
 
 # Data artifacts
 data/bronze/
@@ -54,3 +56,6 @@ data/gold/
 !data/bronze/.gitkeep
 !data/silver/.gitkeep
 !data/gold/.gitkeep
+
+temporal_validation_output.txt
+temporal_ground_truth_validation.csv

@@ -1,0 +1,737 @@
+@import url("https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+:root {
+  --paper: #e9ddc0;
+  --paper-deep: #dccca1;
+  --paper-light: #f3ecd9;
+  --paper-shadow: rgba(33, 26, 16, 0.16);
+
+  --ink: #221a10;
+  --ink-soft: #5b4d33;
+  --ink-faint: #8a7a59;
+
+  --rule: rgba(34, 26, 16, 0.20);
+
+  --stamp-red: #8c2f2b;
+  --stamp-teal: #1f5c52;
+  --gold: #a9762f;
+
+  --font-display: "Spectral", Georgia, serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.site-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      circle at 15% 10%,
+      rgba(255, 255, 255, 0.25),
+      transparent 45%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(34, 26, 16, 0.015) 0px,
+      rgba(34, 26, 16, 0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+}
+
+a {
+  color: inherit;
+}
+
+.section-label {
+  margin: 0 0 10px;
+
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+
+  color: var(--ink-faint);
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.site-header {
+  width: 100%;
+
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+
+  padding: 24px clamp(24px, 4vw, 64px);
+
+  border-bottom: 1px solid var(--rule);
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.wordmark-main {
+  font-size: 21px;
+  font-weight: 600;
+}
+
+.wordmark-secondary {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.site-header nav {
+  display: flex;
+  gap: 30px;
+
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-header nav a {
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 3px;
+}
+
+.site-header nav a:hover {
+  border-bottom-color: var(--gold);
+}
+
+/* =========================================================
+   MAIN CONTAINER
+   ========================================================= */
+
+main {
+  width: min(1500px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* =========================================================
+   HERO
+   ========================================================= */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.7fr);
+  gap: clamp(40px, 7vw, 110px);
+
+  padding: clamp(70px, 8vw, 120px) 0 70px;
+
+  border-bottom: 1px solid var(--rule);
+
+  align-items: end;
+}
+
+.hero h1 {
+  margin: 14px 0 24px;
+
+  font-size: clamp(54px, 6vw, 92px);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--stamp-red);
+}
+
+.hero-description {
+  max-width: 650px;
+
+  margin: 0;
+
+  font-size: clamp(18px, 1.5vw, 22px);
+  line-height: 1.55;
+
+  color: var(--ink-soft);
+}
+
+.hero-note {
+  max-width: 390px;
+
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+
+  color: var(--ink-soft);
+
+  border-left: 2px solid var(--gold);
+  padding-left: 20px;
+}
+
+.hero-note span {
+  display: block;
+
+  margin-bottom: 8px;
+
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+
+  color: var(--stamp-red);
+}
+
+/* =========================================================
+   ATLAS
+   ========================================================= */
+
+.atlas-section {
+  padding: 58px 0 72px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.atlas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+
+  gap: 24px;
+  margin-bottom: 26px;
+}
+
+.atlas-header h2 {
+  margin: 0;
+
+  font-size: clamp(30px, 3vw, 42px);
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.atlas-selection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.country-selector {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  min-height: 38px;
+  padding: 8px 14px;
+
+  background: rgba(220, 204, 161, 0.65);
+
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+
+  cursor: pointer;
+
+  color: var(--ink-soft);
+
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.country-selector:hover {
+  transform: translateY(-1px);
+}
+
+.country-selector.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.selection-dot {
+  width: 8px;
+  height: 8px;
+
+  flex: 0 0 8px;
+
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.selection-dot.selected {
+  background: var(--stamp-teal);
+}
+
+.selection-dot.comparison {
+  background: var(--stamp-red);
+}
+
+.selection-divider {
+  background: none;
+  border: none;
+
+  padding: 7px;
+
+  font-size: 18px;
+  color: var(--ink-faint);
+
+  cursor: pointer;
+}
+
+.selection-divider:hover {
+  color: var(--stamp-red);
+}
+
+/* =========================================================
+   MAP
+   ========================================================= */
+
+.atlas {
+  position: relative;
+
+  width: 100%;
+
+  border: 1px solid var(--rule);
+  background: var(--paper-light);
+
+  padding: clamp(18px, 2vw, 30px);
+
+  border-radius: 3px;
+
+  box-shadow:
+    0 30px 60px -45px var(--paper-shadow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+
+  overflow: hidden;
+}
+
+/*
+   Give the WorldMap component plenty of space.
+   This is intentionally broad because WorldMap owns
+   the SVG/map rendering.
+*/
+
+.atlas > *:first-child {
+  width: 100%;
+  min-height: clamp(520px, 48vw, 760px);
+}
+
+.map-caption {
+  display: flex;
+  justify-content: space-between;
+
+  padding-top: 14px;
+
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+
+  color: var(--ink-faint);
+
+  border-top: 1px solid rgba(34, 26, 16, 0.10);
+}
+
+.map-instruction {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-top: 14px;
+
+  padding: 9px 13px;
+
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: var(--ink-soft);
+
+  border: 1px solid var(--rule);
+  background: rgba(243, 236, 217, 0.55);
+
+  border-radius: 3px;
+}
+
+.map-instruction::before {
+  content: "ⓘ";
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 14px;
+  color: var(--stamp-teal);
+}
+
+/* =========================================================
+   OPEN FILE
+   ========================================================= */
+
+.comparison-action {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 22px;
+}
+
+.comparison-action button,
+button[type="submit"] {
+  min-height: 46px;
+
+  padding: 13px 25px;
+
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  background: var(--ink);
+  color: var(--paper);
+
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+
+  cursor: pointer;
+
+  transition:
+    transform 150ms ease,
+    background 150ms ease,
+    opacity 150ms ease;
+}
+
+.comparison-action button:hover:not(:disabled),
+button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--stamp-teal);
+  border-color: var(--stamp-teal);
+}
+
+.comparison-action button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.notice {
+  margin: 32px 0;
+
+  padding: 18px 22px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  border: 1px solid var(--stamp-red);
+  background: rgba(140, 47, 43, 0.07);
+
+  border-radius: 3px;
+}
+
+.notice strong {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: var(--stamp-red);
+}
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.relationship-loading {
+  padding: 60px 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.loading-line {
+  height: 13px;
+
+  background: linear-gradient(
+    90deg,
+    var(--paper-deep) 25%,
+    var(--paper-light) 50%,
+    var(--paper-deep) 75%
+  );
+
+  background-size: 200% 100%;
+
+  animation: shimmer 1.4s infinite;
+
+  border-radius: 3px;
+}
+
+.loading-line.large {
+  width: 60%;
+}
+
+.loading-line.medium {
+  width: 40%;
+}
+
+.loading-line.small {
+  width: 25%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* =========================================================
+   DOSSIER
+   ========================================================= */
+
+.dossier-section-wrap {
+  width: 100%;
+
+  padding: 72px 0 90px;
+
+  border-bottom: 1px solid var(--rule);
+}
+
+/*
+   Important:
+   RelationshipProfile is a child component. Do not constrain it
+   from the App shell. Let its own sections occupy the dossier width.
+*/
+
+.dossier-section-wrap > * {
+  width: 100%;
+  max-width: none;
+}
+
+/* Common visual treatment for likely profile sections */
+.dossier-section-wrap section {
+  width: 100%;
+}
+
+.dossier-section-wrap h1 {
+  font-size: clamp(44px, 5vw, 76px);
+  line-height: 1;
+}
+
+.dossier-section-wrap h2 {
+  font-size: clamp(30px, 3.5vw, 48px);
+  line-height: 1.05;
+}
+
+.dossier-section-wrap p {
+  line-height: 1.65;
+}
+
+/* =========================================================
+   METHODOLOGY
+   ========================================================= */
+
+.methodology {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.8fr);
+
+  gap: clamp(50px, 8vw, 130px);
+
+  padding: 80px 0;
+
+  border-top: 0;
+}
+
+.methodology h2 {
+  margin: 12px 0 0;
+
+  font-size: clamp(32px, 3.5vw, 52px);
+  line-height: 1.08;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.methodology-copy {
+  max-width: 620px;
+}
+
+.methodology-copy p {
+  margin: 0 0 18px;
+
+  font-size: 17px;
+  line-height: 1.7;
+
+  color: var(--ink-soft);
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+
+  padding: 26px clamp(24px, 4vw, 64px);
+
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: var(--ink-faint);
+
+  border-top: 1px solid var(--rule);
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1100px) {
+  main {
+    width: min(100% - 40px, 1500px);
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-note {
+    max-width: 600px;
+  }
+
+  .atlas-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .comparison-action {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  main {
+    width: calc(100% - 28px);
+  }
+
+  .site-header {
+    padding: 20px 14px;
+  }
+
+  .site-header nav {
+    display: none;
+  }
+
+  .hero {
+    padding: 55px 0 45px;
+  }
+
+  .hero h1 {
+    font-size: 48px;
+  }
+
+  .atlas-section {
+    padding: 42px 0 55px;
+  }
+
+  .atlas-selection {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .country-selector {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .atlas {
+    padding: 10px;
+  }
+
+  .atlas > *:first-child {
+    min-height: 420px;
+  }
+
+  .map-caption {
+    font-size: 9px;
+  }
+
+  .methodology {
+    grid-template-columns: 1fr;
+    padding: 60px 0;
+    gap: 35px;
+  }
+
+  footer {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 40px;
+  }
+
+  .hero-description {
+    font-size: 17px;
+  }
+
+  .atlas-selection {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .selection-divider {
+    align-self: center;
+  }
+
+  .comparison-action {
+    justify-content: stretch;
+  }
+
+  .comparison-action button {
+    width: 100%;
+  }
+}
