@@ -1,6 +1,5 @@
-// The analytics layer (packages/analytics/relationship_intelligence.py) is
-// free to evolve its field names. These helpers read a value from the first
-// matching key so the dossier UI degrades gracefully instead of breaking.
+// Flexible field helpers for the Relationship Dossier.
+// Backend analytics field names may evolve; the UI should remain resilient.
 
 export function pick(obj, keys, fallback = undefined) {
   if (!obj) return fallback;
@@ -24,13 +23,15 @@ export function asNumber(value) {
   return Number.isFinite(num) ? num : null;
 }
 
-// Normalises a score that may arrive as a 0–1 fraction, a -1–1 similarity,
-// or an already-scaled -100–100 / 0–100 percentage into a -100..100 range.
 export function normaliseScore(raw) {
   const num = asNumber(raw);
 
   if (num === null) return null;
+
+  // 0–1 fraction
   if (Math.abs(num) <= 1) return num * 100;
+
+  // Already percentage / -100..100
   if (Math.abs(num) <= 100) return num;
 
   return Math.max(-100, Math.min(100, num));
@@ -69,6 +70,7 @@ export function historyPoint(row) {
         "relationship_score",
         "agreement_rate",
         "agreement_score",
+        "alignment",
         "value",
       ])
     ),
@@ -83,7 +85,11 @@ export function changeEntry(row) {
       ["title", "headline", "summary", "reason", "description"],
       "Shift in voting alignment"
     ),
-    detail: pick(row, ["detail", "description", "explanation", "notes"], ""),
+    detail: pick(
+      row,
+      ["detail", "description", "explanation", "notes"],
+      ""
+    ),
     magnitude: asNumber(
       pick(row, ["magnitude", "delta", "change", "shift"])
     ),
@@ -93,18 +99,88 @@ export function changeEntry(row) {
 
 export function topicEntry(row) {
   if (typeof row === "string") {
-    return { name: row, score: null, votes: null };
+    return {
+      name: row,
+      score: null,
+      votes: null,
+    };
   }
 
   return {
     name: pick(
       row,
-      ["topic", "name", "issue", "category", "label"],
+      ["topic", "name", "issue", "category", "label", "subject"],
       "Unlabelled issue area"
     ),
     score: normaliseScore(
-      pick(row, ["score", "agreement_rate", "alignment", "value"])
+      pick(
+        row,
+        [
+          "score",
+          "agreement_rate",
+          "alignment",
+          "alignment_score",
+          "value",
+        ]
+      )
     ),
-    votes: asNumber(pick(row, ["votes", "count", "n", "total_votes"])),
+    votes: asNumber(
+      pick(row, ["votes", "count", "n", "total_votes"])
+    ),
+  };
+}
+
+/*
+ * Backend evidence summary adapter.
+ *
+ * Example backend:
+ * evidence_summary: {
+ *   subjects: 153,
+ *   subject_trend_rows: 29,
+ *   resolution_disagreements: 1412,
+ *   issue_rows_country_a: 276,
+ *   issue_rows_country_b: 275
+ * }
+ */
+export function evidenceSummary(obj) {
+  const summary =
+    obj?.evidence_summary ||
+    obj?.evidenceSummary ||
+    {};
+
+  return {
+    subjects: asNumber(
+      pick(summary, ["subjects", "subject_count"])
+    ),
+
+    subjectTrendRows: asNumber(
+      pick(summary, [
+        "subject_trend_rows",
+        "subject_trends",
+        "trend_rows",
+      ])
+    ),
+
+    resolutionDisagreements: asNumber(
+      pick(summary, [
+        "resolution_disagreements",
+        "disagreements",
+        "resolution_disagreement_count",
+      ])
+    ),
+
+    issueRowsCountryA: asNumber(
+      pick(summary, [
+        "issue_rows_country_a",
+        "country_a_issue_rows",
+      ])
+    ),
+
+    issueRowsCountryB: asNumber(
+      pick(summary, [
+        "issue_rows_country_b",
+        "country_b_issue_rows",
+      ])
+    ),
   };
 }

@@ -266,10 +266,6 @@ function App() {
             </div>
           </div>
 
-          <div className="map-instruction">
-            {selectionMode === "A" ? "Selecting Country A" : "Selecting Country B"}
-          </div>
-
           <div className="comparison-action">
             <button
               onClick={() => loadRelationship(countryA, countryB)}

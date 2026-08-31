@@ -9,6 +9,7 @@ import {
   historyPoint,
   changeEntry,
   topicEntry,
+  evidenceSummary
 } from "./Dossierfields";
 
 function DossierSection({ index, eyebrow, title, children, note }) {
@@ -94,8 +95,8 @@ function Timeline({ points, nameA, nameB }) {
   const height = 200;
   const padding = 28;
   const scores = usable.map((p) => p.score);
-  const min = Math.min(-20, ...scores);
-  const max = Math.max(20, ...scores);
+  const min = Math.min(-100, ...scores);
+  const max = Math.max(100, ...scores);
 
   const x = (i) =>
     padding + (i / (usable.length - 1)) * (width - padding * 2);
@@ -131,7 +132,7 @@ function Timeline({ points, nameA, nameB }) {
           />
         ))}
         <text x={padding} y={16} className="timeline-caption">
-          {nameA} above the line, {nameB} below
+          Positive values indicate stronger voting alignment
         </text>
       </svg>
       <div className="timeline-axis">
@@ -333,6 +334,62 @@ function RelationshipProfile({
   );
 
   if (!relationship) return null;
+  const evidence =
+    relationship?.evidence_summary ||
+    relationship?.evidenceSummary ||
+    evidenceSummary(relationship) ||
+    {};
+
+  const directionalAgreement = asNumber(
+    pick(relationship, [
+      "directional_agreement",
+      "directionalAgreement",
+    ])
+  );
+
+  const meanAlignment = asNumber(
+    pick(relationship, [
+      "mean_alignment",
+      "meanAlignment",
+    ])
+  );
+
+  const meanDivergence = asNumber(
+    pick(relationship, [
+      "mean_divergence",
+      "meanDivergence",
+    ])
+  );
+
+  const changeEpisodeCount = asNumber(
+    pick(relationship, [
+      "change_episode_count",
+      "changeEpisodeCount",
+      "change_points",
+    ])
+  );
+
+  const confirmedEpisodeCount = asNumber(
+    pick(relationship, [
+      "confirmed_episode_count",
+      "confirmedEpisodeCount",
+    ])
+  );
+
+  const evidenceCount = asNumber(
+    pick(relationship, [
+      "evidence_count",
+      "evidenceCount",
+      "total_votes",
+      "shared_votes",
+    ])
+  );
+
+  const relationshipDirection = pick(
+    relationship,
+    ["relationship_direction", "relationshipDirection", "direction"],
+    null
+  );
 
   return (
     <article
@@ -365,43 +422,125 @@ function RelationshipProfile({
 
         <Seal score={score} />
       </header>
+            <div className="intelligence-strip">
+        <div className="intelligence-item">
+          <span>Current alignment</span>
+          <strong>
+            {score !== null ? `${score.toFixed(1)}%` : "—"}
+          </strong>
+        </div>
 
+        <div className="intelligence-item">
+          <span>Direction</span>
+          <strong>
+            {relationshipDirection || "—"}
+          </strong>
+        </div>
+
+        <div className="intelligence-item">
+          <span>Directional agreement</span>
+          <strong>
+            {directionalAgreement !== null
+              ? `${(
+                  directionalAgreement <= 1
+                    ? directionalAgreement * 100
+                    : directionalAgreement
+                ).toFixed(1)}%`
+              : "—"}
+          </strong>
+        </div>
+
+        <div className="intelligence-item">
+          <span>Evidence</span>
+          <strong>
+            {evidenceCount !== null
+              ? evidenceCount.toLocaleString()
+              : "—"}
+          </strong>
+        </div>
+
+        <div className="intelligence-item">
+          <span>Detected changes</span>
+          <strong>
+            {changeEpisodeCount !== null
+              ? changeEpisodeCount.toLocaleString()
+              : "—"}
+          </strong>
+        </div>
+      </div>
       <div className={`dossier-body ${expanded ? "" : "is-collapsed"}`}>
         <DossierSection
           index={0}
           eyebrow="Exhibit A"
           title="Agreement vs. disagreement"
         >
-          <div className="ledger">
-            <LedgerRow
-              label="Agreement rate"
-              value={
-                agreementRate !== null
-                  ? `${(agreementRate <= 1 ? agreementRate * 100 : agreementRate).toFixed(1)}%`
-                  : null
-              }
-            />
-            <LedgerRow
-              label="Disagreement rate"
-              value={
-                disagreementRate !== null
-                  ? `${(disagreementRate <= 1
-                      ? disagreementRate * 100
-                      : disagreementRate
-                    ).toFixed(1)}%`
-                  : null
-              }
-            />
-            <LedgerRow
-              label="Shared votes on record"
-              value={totalVotes !== null ? totalVotes.toLocaleString() : null}
-            />
-            <LedgerRow
-              label="Shared sessions"
-              value={sharedSessions !== null ? sharedSessions.toLocaleString() : null}
-            />
-            <LedgerRow label="Trajectory" value={trend} />
-          </div>
+        <div className="ledger">
+          <LedgerRow
+            label="Relationship score"
+            value={score !== null ? `${score.toFixed(1)}%` : null}
+          />
+          <LedgerRow
+            label="Relationship direction"
+            value={relationshipDirection}
+          />
+          <LedgerRow
+            label="Directional agreement"
+            value={
+              directionalAgreement !== null
+                ? `${(directionalAgreement <= 1
+                    ? directionalAgreement * 100
+                    : directionalAgreement
+                  ).toFixed(1)}%`
+                : null
+            }
+          />
+          <LedgerRow
+            label="Mean alignment"
+            value={
+              meanAlignment !== null
+                ? `${(meanAlignment <= 1
+                    ? meanAlignment * 100
+                    : meanAlignment
+                  ).toFixed(1)}%`
+                : null
+            }
+          />
+          <LedgerRow
+            label="Mean divergence"
+            value={
+              meanDivergence !== null
+                ? `${(meanDivergence <= 1
+                    ? meanDivergence * 100
+                    : meanDivergence
+                  ).toFixed(1)}%`
+                : null
+            }
+          />
+          <LedgerRow
+            label="Evidence count"
+            value={
+              evidenceCount !== null
+                ? evidenceCount.toLocaleString()
+                : null
+            }
+          />
+          <LedgerRow
+            label="Detected changes"
+            value={
+              changeEpisodeCount !== null
+                ? changeEpisodeCount.toLocaleString()
+                : null
+            }
+          />
+          <LedgerRow
+            label="Confirmed changes"
+            value={
+              confirmedEpisodeCount !== null
+                ? confirmedEpisodeCount.toLocaleString()
+                : null
+            }
+          />
+        </div>
         </DossierSection>
 
         <DossierSection
@@ -418,6 +557,53 @@ function RelationshipProfile({
           eyebrow="Exhibit C"
           title="Issues & topic alignment"
         >
+          <div className="evidence-grid">
+            <div className="evidence-card">
+              <span className="evidence-number">
+                {evidence.subjects ?? "—"}
+              </span>
+              <span className="evidence-label">Subjects analysed</span>
+            </div>
+
+            <div className="evidence-card">
+              <span className="evidence-number">
+                {evidence.subject_trend_rows ?? evidence.subjectTrendRows ?? "—"}
+              </span>
+              <span className="evidence-label">Subject trend records</span>
+            </div>
+
+            <div className="evidence-card">
+              <span className="evidence-number">
+                {evidence.resolution_disagreements ??
+                  evidence.resolutionDisagreements ??
+                  "—"}
+              </span>
+              <span className="evidence-label">Resolution disagreements</span>
+            </div>
+
+            <div className="evidence-card">
+              <span className="evidence-number">
+                {evidence.issue_rows_country_a ??
+                  evidence.issueRowsCountryA ??
+                  "—"}
+              </span>
+              <span className="evidence-label">
+                {nameA} issue records
+              </span>
+            </div>
+
+            <div className="evidence-card">
+              <span className="evidence-number">
+                {evidence.issue_rows_country_b ??
+                  evidence.issueRowsCountryB ??
+                  "—"}
+              </span>
+              <span className="evidence-label">
+                {nameB} issue records
+              </span>
+            </div>
+          </div>
+
           <TopicBars topics={topics} />
         </DossierSection>
 
@@ -425,10 +611,39 @@ function RelationshipProfile({
           index={3}
           eyebrow="Exhibit D"
           title="Turning points"
+          note={
+            changeEpisodeCount !== null
+              ? `${changeEpisodeCount} detected`
+              : null
+          }
         >
+          <div className="turning-summary">
+            <div>
+              <span>Detected episodes</span>
+              <strong>
+                {changeEpisodeCount !== null
+                  ? changeEpisodeCount.toLocaleString()
+                  : "—"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Confirmed episodes</span>
+              <strong>
+                {confirmedEpisodeCount !== null
+                  ? confirmedEpisodeCount.toLocaleString()
+                  : "—"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Change records</span>
+              <strong>{turningPoints.length}</strong>
+            </div>
+          </div>
+
           <TurningPoints entries={turningPoints} />
         </DossierSection>
-
         <DossierSection
           index={4}
           eyebrow="Exhibit E"
@@ -443,6 +658,71 @@ function RelationshipProfile({
             nameA={nameA}
             nameB={nameB}
           />
+        </DossierSection>
+                <DossierSection
+          index={5}
+          eyebrow="Evidence"
+          title="Evidence & method"
+        >
+          <div className="method-grid">
+            <div>
+              <span>Evidence source</span>
+              <strong>
+                {relationship.evidence_source || "UN VOTING"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Provenance</span>
+              <strong>
+                {relationship.provenance || "UN_VOTES_ANALYZER"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Temporal alignment</span>
+              <strong>
+                {relationship.evidence?.temporal_alignment ??
+                  relationship.evidence_summary?.temporal_alignment ??
+                  "—"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Change points</span>
+              <strong>
+                {relationship.evidence?.change_points ??
+                  relationship.evidence_summary?.change_points ??
+                  changeEpisodeCount ??
+                  "—"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Issue attribution</span>
+              <strong>
+                {relationship.evidence?.issue_attribution ??
+                  relationship.evidence_summary?.issue_attribution ??
+                  "—"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Episode attribution</span>
+              <strong>
+                {relationship.evidence?.episode_attribution ??
+                  relationship.evidence_summary?.episode_attribution ??
+                  "—"}
+              </strong>
+            </div>
+          </div>
+
+          <p className="method-note">
+            Relationship estimates are derived from observed United Nations
+            General Assembly voting behaviour. Evidence and attribution fields
+            indicate how much supporting analytical evidence is available for
+            this pairing.
+          </p>
         </DossierSection>
       </div>
 

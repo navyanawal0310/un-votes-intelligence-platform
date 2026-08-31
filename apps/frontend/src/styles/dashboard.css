@@ -363,39 +363,6 @@ main {
   border-top: 1px solid rgba(34, 26, 16, 0.10);
 }
 
-.map-instruction {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-
-  margin-top: 14px;
-
-  padding: 9px 13px;
-
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-
-  color: var(--ink-soft);
-
-  border: 1px solid var(--rule);
-  background: rgba(243, 236, 217, 0.55);
-
-  border-radius: 3px;
-}
-
-.map-instruction::before {
-  content: "ⓘ";
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 14px;
-  color: var(--stamp-teal);
-}
-
 /* =========================================================
    OPEN FILE
    ========================================================= */
