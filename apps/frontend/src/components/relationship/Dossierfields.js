@@ -91,56 +91,82 @@ export function historyPoint(row) {
 }
 
 export function changeEntry(row) {
+  const episodeStart = pick(
+    row,
+    ["episode_start", "start_year", "change_year", "year"],
+    ""
+  );
+
+  const episodeEnd = pick(
+    row,
+    ["episode_end", "end_year"],
+    episodeStart
+  );
+
+  const peakYear = pick(
+    row,
+    ["peak_change_year", "change_year", "year"],
+    episodeStart
+  );
+
+  const date =
+    episodeStart !== episodeEnd
+      ? `${episodeStart}–${episodeEnd}`
+      : `${episodeStart}`;
+
   return {
-    date: pick(
-      row,
-      ["year", "period", "date", "label", "change_year"],
-      ""
-    ),
+    date,
 
-    title: pick(
-      row,
-      ["title", "headline", "summary", "reason", "description"],
-      "Shift in voting alignment"
-    ),
+    title:
+      row?.issue
+        ? `Shift in ${row.issue}`
+        : "Shift in voting alignment",
 
-    detail: pick(
-      row,
-      ["detail", "description", "explanation", "notes"],
-      ""
-    ),
+    detail:
+      row?.detections
+        ? `${row.detections} change-point detections clustered into this episode. Peak change: ${peakYear}.`
+        : "",
 
     magnitude: asNumber(
       pick(row, [
+        "max_change_magnitude",
+        "change_magnitude",
         "magnitude",
         "delta",
         "change",
         "shift",
-        "change_magnitude",
       ])
     ),
 
     direction: pick(
       row,
-      ["direction", "trend"],
+      ["issue_direction", "direction", "trend"],
       null
     ),
 
     confirmed:
       row?.confirmed === true ||
       row?.confirmed === 1 ||
-      row?.confirmed === "true",
+      row?.confirmed === "true" ||
+      Number(row?.confirmed_detections || 0) > 0,
 
     confidence: asNumber(
-      pick(row, ["confidence"])
+      pick(row, [
+        "max_confidence",
+        "confidence",
+      ])
     ),
 
     effectSize: asNumber(
-      pick(row, ["effect_size", "effectSize"])
+      pick(row, [
+        "max_effect_size",
+        "effect_size",
+        "effectSize",
+      ])
     ),
 
     persistence: asNumber(
-      pick(row, ["persistence"])
+      pick(row, ["persistence", "episode_observations"])
     ),
   };
 }

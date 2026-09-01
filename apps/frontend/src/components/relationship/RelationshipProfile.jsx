@@ -380,37 +380,21 @@ function RelationshipProfile({
       : [];
   }, [record]);
 
-    const turningPoints = useMemo(() => {
+  const turningPoints = useMemo(() => {
+    const episodes = pick(
+      record,
+      ["change_episodes", "changeEpisodes"],
+      []
+    );
 
-        const rawChangePoints = pick(
-          record,
-          ["change_episodes", "changeEpisodes"],
-          []
-        );
+    if (!Array.isArray(episodes)) {
+      return [];
+    }
 
-    const recordChangePoints = Array.isArray(rawChangePoints)
-      ? rawChangePoints
-      : Array.isArray(rawChangePoints?.items)
-      ? rawChangePoints.items
-      : Array.isArray(rawChangePoints?.records)
-      ? rawChangePoints.records
-      : [];
-
-    const propChanges = Array.isArray(changes)
-      ? changes
-      : Array.isArray(changes?.change_points)
-      ? changes.change_points
-      : Array.isArray(changes?.changePoints)
-      ? changes.changePoints
-      : [];
-
-    const source =
-      propChanges.length > 0
-        ? propChanges
-        : recordChangePoints;
-
-    return source.map(changeEntry);
-  }, [changes, record]);
+    return episodes
+      .map(changeEntry)
+      .filter(Boolean);
+  }, [record]);
   if (!record) return null;
   const evidence = evidenceSummary(record);
 
@@ -486,6 +470,8 @@ const recordChangePoints = Array.isArray(rawChangePoints)
   ? rawChangePoints.items
   : Array.isArray(rawChangePoints?.records)
   ? rawChangePoints.records
+  : asNumber(rawChangePoints) !== null
+  ? Number(rawChangePoints)
   : [];
 
 const changeEpisodeCount =
@@ -783,10 +769,13 @@ const relationshipDirection = pick(
 
             <div>
               <span>Change records</span>
-              <strong>{turningPoints.length}</strong>
+              <strong>
+                {Array.isArray(recordChangePoints)
+                  ? recordChangePoints.length
+                  : recordChangePoints}
+              </strong>
             </div>
           </div>
-
           <TurningPoints entries={turningPoints} />
         </DossierSection>
         <DossierSection
@@ -804,7 +793,7 @@ const relationshipDirection = pick(
             nameB={nameB}
           />
         </DossierSection>
-                <DossierSection
+        <DossierSection
           index={5}
           eyebrow="Evidence"
           title="Evidence & method"
@@ -846,18 +835,30 @@ const relationshipDirection = pick(
             <div>
               <span>Issue attribution</span>
               <strong>
-                {record.evidence?.issue_attribution ??
-                  record.evidence_summary?.issue_attribution ??
-                  "—"}
+                {(
+                  record.evidence?.issue_attribution ??
+                  record.evidence_summary?.issue_attribution
+                ) > 0
+                  ? (
+                      record.evidence?.issue_attribution ??
+                      record.evidence_summary?.issue_attribution
+                    )
+                  : "Not available"}
               </strong>
             </div>
 
             <div>
               <span>Episode attribution</span>
               <strong>
-                {record.evidence?.episode_attribution ??
-                  record.evidence_summary?.episode_attribution ??
-                  "—"}
+                {(
+                  record.evidence?.episode_attribution ??
+                  record.evidence_summary?.episode_attribution
+                ) > 0
+                  ? (
+                      record.evidence?.episode_attribution ??
+                      record.evidence_summary?.episode_attribution
+                    )
+                  : "Not available"}
               </strong>
             </div>
           </div>

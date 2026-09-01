@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from enum import Enum
 from typing import Any
+import pandas as pd
 import duckdb
 from packages.warehouse.database import get_connection
 from packages.analytics.country_pair_report import (
@@ -178,12 +179,21 @@ def classify_query(
         for term in (
             "change point",
             "change points",
-            "relationship change point",
+            "relationship change",
+            "relationship changes",
             "relationship change points",
             "detected changes",
             "turning point",
             "turning points",
-            "when did the relationship change",
+            "largest change",
+            "largest changes",
+            "biggest change",
+            "biggest changes",
+            "most significant change",
+            "most significant changes",
+            "strongest change",
+            "strongest changes",
+            "when did",
         )
     ):
         return QueryIntent.RELATIONSHIP_CHANGES
@@ -407,15 +417,68 @@ def execute_query(
     finally:
         con.close()
 
+    # Build a more specific answer for change-point questions.
+    if intent == QueryIntent.RELATIONSHIP_CHANGES:
+        if isinstance(result, pd.DataFrame) and not result.empty:
+            changes = result.copy()
+
+            if "change_magnitude" in changes.columns:
+                changes["abs_change_magnitude"] = (
+                    pd.to_numeric(
+                        changes["change_magnitude"],
+                        errors="coerce",
+                    ).abs()
+                )
+
+                changes = changes.sort_values(
+                    "abs_change_magnitude",
+                    ascending=False,
+                )
+
+            top_changes = changes.head(5)
+
+            parts = []
+
+            for _, row in top_changes.iterrows():
+                year = row.get("change_year", "")
+                magnitude = row.get("change_magnitude")
+                effect = row.get("effect_size")
+                confirmed = row.get("confirmed", False)
+
+                text = f"{int(year)}"
+
+                if pd.notna(magnitude):
+                    text += f" (change magnitude {float(magnitude):.3f})"
+
+                if pd.notna(effect):
+                    text += f", effect size {float(effect):.3f}"
+
+                if bool(confirmed):
+                    text += ", confirmed"
+
+                parts.append(text)
+
+            answer = (
+                f"{len(changes)} relationship change points were detected. "
+                f"The largest observed changes were: "
+                + "; ".join(parts)
+                + "."
+            )
+        else:
+            answer = "No relationship change points were detected."
+
+    else:
+        answer = generate_answer(
+            intent.value,
+            result,
+        )
+
     return {
         "question": question.strip(),
         "intent": intent.value,
         "country_a": resolved_a,
         "country_b": resolved_b,
-        "answer": generate_answer(
-            intent.value,
-            result,
-        ),
+        "answer": answer,
         "result": result,
         "evidence_source": "UN_VOTING",
         "provenance": "UN_VOTES_ANALYZER",
