@@ -11,7 +11,7 @@ import {
   runIntelligenceQuery,
 } from "./api/client";
 import RelationshipProfile from "./components/relationship/RelationshipProfile";
-
+import About from "./pages/About";
 isoCountries.registerLocale(en);
 
 function countryName(code) {
@@ -29,6 +29,9 @@ function countryName(code) {
 }
 
 function App() {
+  const [page, setPage] = useState(
+    window.location.hash === "#about" ? "about" : "explore"
+  );
   const [countryA, setCountryA] = useState("IND");
   const [countryB, setCountryB] = useState("CHN");
   const [selectionMode, setSelectionMode] = useState("B");
@@ -44,7 +47,21 @@ function App() {
 
   const [availableCountries, setAvailableCountries] = useState([]);
   const [countriesLoading, setCountriesLoading] = useState(true);
+  useEffect(() => {
+  function handleHashChange() {
+    setPage(
+      window.location.hash === "#about"
+        ? "about"
+        : "explore"
+    );
+  }
 
+  window.addEventListener("hashchange", handleHashChange);
+
+  return () => {
+    window.removeEventListener("hashchange", handleHashChange);
+  };
+}, []);
   const selectedA = useMemo(
     () => ({ code: countryA, name: countryName(countryA) }),
     [countryA]
@@ -163,6 +180,30 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  if (page === "about") {
+    return (
+      <div className="site-shell">
+        <header className="site-header">
+          <div className="wordmark">
+            <span className="wordmark-main">UN Votes</span>
+            <span className="wordmark-secondary">
+              Intelligence
+            </span>
+          </div>
+
+          <nav>
+            <a href="#explore">Explore</a>
+            <a href="#methodology">Methodology</a>
+            <a href="#about">About</a>
+          </nav>
+        </header>
+
+        <About />
+      </div>
+    );
+  }
+
   return (
     <div className="site-shell">
       <header className="site-header">
@@ -174,6 +215,7 @@ function App() {
         <nav>
           <a href="#explore">Explore</a>
           <a href="#methodology">Methodology</a>
+          <a href="#about">About</a>
         </nav>
       </header>
 
