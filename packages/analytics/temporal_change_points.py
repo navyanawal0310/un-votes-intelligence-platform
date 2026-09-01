@@ -3,7 +3,8 @@ from __future__ import annotations
 import pandas as pd
 
 from packages.analytics.change_points import (
-    detect_change_points,
+    detect_pair_change_points,
+    consolidate_change_points,
 )
 
 
@@ -13,70 +14,76 @@ def detect_temporal_alignment_changes(
     after_window: int = 3,
     magnitude_threshold: float = 0.10,
     effect_threshold: float = 0.80,
-    persistence_window: int = 2,
+    persistence_window: int = 3,
 ) -> pd.DataFrame:
 
     if temporal_alignment.empty:
         return pd.DataFrame()
 
-    df = temporal_alignment.copy()
-
-    required = [
+    required = {
         "country_a",
         "country_b",
         "window_end",
         "mean_alignment",
-    ]
+    }
 
-    missing = [
-        column
-        for column in required
-        if column not in df.columns
-    ]
+    missing = sorted(
+        required - set(temporal_alignment.columns)
+    )
 
     if missing:
         raise ValueError(
-            f"Missing required temporal alignment columns: "
-            f"{missing}"
+            f"Missing required temporal alignment columns: {missing}"
         )
 
-    # ---------------------------------------------------------
-    # Normalize temporal alignment into change-point schema
-    # ---------------------------------------------------------
+    df = temporal_alignment.copy()
 
-    df["country_code"] = (
-        df["country_a"].astype(str)
-        + "_"
-        + df["country_b"].astype(str)
+    df["country_a"] = (
+        df["country_a"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
     )
 
-    df["issue"] = "TEMPORAL_ALIGNMENT"
+    df["country_b"] = (
+        df["country_b"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
 
-    df["year"] = pd.to_numeric(
+    df["window_end"] = pd.to_numeric(
         df["window_end"],
         errors="coerce",
     )
 
-    df["position_score"] = pd.to_numeric(
+    df["mean_alignment"] = pd.to_numeric(
         df["mean_alignment"],
         errors="coerce",
     )
 
     df = df.dropna(
         subset=[
-            "year",
-            "position_score",
+            "country_a",
+            "country_b",
+            "window_end",
+            "mean_alignment",
         ]
-    )
+    ).copy()
 
-    df = df.sort_values("year")
+    if df.empty:
+        return pd.DataFrame()
 
     # ---------------------------------------------------------
-    # Run the existing validated detector
+    # Pair-level change-point detection
     # ---------------------------------------------------------
 
-    changes = detect_change_points(
+    changes = detect_pair_change_points(
         df,
+        value_column="mean_alignment",
+        year_column="window_end",
+        country_a_column="country_a",
+        country_b_column="country_b",
         before_window=before_window,
         after_window=after_window,
         magnitude_threshold=magnitude_threshold,
@@ -85,20 +92,108 @@ def detect_temporal_alignment_changes(
     )
 
     if changes.empty:
-        return changes
+        return pd.DataFrame(
+            columns=[
+                "country_a",
+                "country_b",
+                "pair",
+                "change_year",
+                "mean_before",
+                "mean_after",
+                "change_magnitude",
+                "effect_size",
+                "persistence",
+                "low_variance_shift",
+                "confirmed",
+                "confidence",
+            ]
+        )
 
     # ---------------------------------------------------------
-    # Restore temporal-analysis metadata
+    # Canonical pair key
     # ---------------------------------------------------------
-
-    changes = changes.copy()
 
     changes["country_a"] = (
-        df["country_a"].iloc[0]
+        changes["country_a"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
     )
 
     changes["country_b"] = (
-        df["country_b"].iloc[0]
+        changes["country_b"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
     )
 
-    return changes
+    changes["pair"] = [
+        "-".join(
+            sorted(
+                [
+                    a,
+                    b,
+                ]
+            )
+        )
+        for a, b in zip(
+            changes["country_a"],
+            changes["country_b"],
+        )
+    ]
+
+    # ---------------------------------------------------------
+    # Consolidate nearby detections
+    # ---------------------------------------------------------
+
+    changes["country_code"] = (
+        changes["country_a"]
+        + "_"
+        + changes["country_b"]
+    )
+
+    changes["issue"] = "TEMPORAL_ALIGNMENT"
+
+    changes = consolidate_change_points(
+        changes,
+        min_separation=3,
+    )
+
+    # Rebuild canonical pair after consolidation
+    changes["pair"] = [
+        "-".join(
+            sorted(
+                [
+                    str(a).strip().upper(),
+                    str(b).strip().upper(),
+                ]
+            )
+        )
+        for a, b in zip(
+            changes["country_a"],
+            changes["country_b"],
+        )
+    ]
+
+    return changes[
+        [
+            "country_a",
+            "country_b",
+            "pair",
+            "change_year",
+            "mean_before",
+            "mean_after",
+            "change_magnitude",
+            "effect_size",
+            "persistence",
+            "low_variance_shift",
+            "confirmed",
+            "confidence",
+        ]
+    ].sort_values(
+        [
+            "country_a",
+            "country_b",
+            "change_year",
+        ]
+    ).reset_index(drop=True)

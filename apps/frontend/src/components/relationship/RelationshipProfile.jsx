@@ -9,7 +9,8 @@ import {
   historyPoint,
   changeEntry,
   topicEntry,
-  evidenceSummary
+  evidenceSummary,
+  unwrapRelationship
 } from "./Dossierfields";
 
 function DossierSection({ index, eyebrow, title, children, note }) {
@@ -182,9 +183,13 @@ function TopicBars({ topics }) {
 function TurningPoints({ entries }) {
   if (entries.length === 0) {
     return (
-      <p className="dossier-empty">
-        No discrete turning points have been flagged in this pairing yet.
-      </p>
+      <div className="turning-empty">
+        <strong>No statistically significant turning point detected</strong>
+        <p>
+          The available voting record does not contain a persistent
+          alignment shift that meets the current change-point criteria.
+        </p>
+      </div>
     );
   }
 
@@ -245,22 +250,47 @@ function Interrogation({
       </form>
 
       {queryResult && (
-        <div className="interrogation-transcript">
-          <p className="transcript-q">Q — {queryResult.question || query}</p>
-          <p className="transcript-a">
-            A — {queryResult.answer || "No answer returned."}
-          </p>
-          {queryResult.evidence && (
-            <p className="transcript-evidence">{queryResult.evidence}</p>
-          )}
-          {queryResult.evidence_source && (
-            <p className="transcript-source">
-              Source: {queryResult.evidence_source}
-              {queryResult.provenance ? ` · ${queryResult.provenance}` : ""}
-            </p>
-          )}
-        </div>
-      )}
+  <div className="interrogation-transcript">
+    <div className="transcript-question">
+      <span>Question</span>
+      <p>{queryResult.question || query}</p>
+    </div>
+
+    <div className="transcript-answer">
+      <span>Analytical answer</span>
+      <p>
+        {queryResult.answer || "No answer returned from the analytical record."}
+      </p>
+    </div>
+
+    {(queryResult.evidence ||
+      queryResult.evidence_source ||
+      queryResult.provenance) && (
+      <div className="transcript-evidence-block">
+        {queryResult.evidence && (
+          <div>
+            <span>Evidence</span>
+            <p>{queryResult.evidence}</p>
+          </div>
+        )}
+
+        {queryResult.evidence_source && (
+          <div>
+            <span>Source</span>
+            <p>{queryResult.evidence_source}</p>
+          </div>
+        )}
+
+        {queryResult.provenance && (
+          <div>
+            <span>Provenance</span>
+            <p>{queryResult.provenance}</p>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
     </div>
   );
 }
@@ -279,13 +309,15 @@ function RelationshipProfile({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const nameA = pick(relationship, ["country_a_name", "country_a"], countryA) || countryA;
-  const nameB = pick(relationship, ["country_b_name", "country_b"], countryB) || countryB;
+  const record = unwrapRelationship(relationship);
+
+  const nameA = pick(record, ["country_a_name", "country_a"], countryA) || countryA;
+  const nameB = pick(record, ["country_b_name", "country_b"], countryB) || countryB;
 
   const score = useMemo(
     () =>
       normaliseScore(
-        pick(relationship, [
+        pick(record, [
           "relationship_score",
           "score",
           "alignment_score",
@@ -295,102 +327,204 @@ function RelationshipProfile({
   );
 
   const agreementRate = asNumber(
-    pick(relationship, ["agreement_rate", "agreement_percentage"])
+    pick(record, ["agreement_rate", "agreement_percentage"])
   );
   const disagreementRate = asNumber(
-    pick(relationship, ["disagreement_rate", "disagreement_percentage"])
+    pick(record, ["disagreement_rate", "disagreement_percentage"])
   );
   const totalVotes = asNumber(
-    pick(relationship, ["total_votes", "shared_votes", "vote_count"])
+    pick(record, ["total_votes", "shared_votes", "vote_count"])
   );
   const sharedSessions = asNumber(
-    pick(relationship, ["sessions", "shared_sessions", "session_count"])
+    pick(record, ["sessions", "shared_sessions", "session_count"])
   );
-  const trend = pick(relationship, ["trend", "trajectory"], null);
+  const trend = pick(record, ["trend", "trajectory"], null);
   const summary = pick(
     relationship,
     ["summary", "narrative", "description"],
     null
   );
 
-  const historyRows = Array.isArray(history?.history)
-    ? history.history
-    : Array.isArray(history)
-    ? history
-    : [];
+  const historyRows =
+    Array.isArray(history?.history)
+      ? history.history
+      : Array.isArray(history?.data)
+      ? history.data
+      : Array.isArray(history?.trajectory)
+      ? history.trajectory
+      : Array.isArray(history?.history?.data)
+      ? history.history.data
+      : Array.isArray(history)
+      ? history
+      : [];
   const points = useMemo(
     () => historyRows.map(historyPoint),
     [historyRows]
   );
 
   const topics = useMemo(() => {
-    const raw = pick(relationship, ["topics", "issues", "categories"], []);
-    return Array.isArray(raw) ? raw.map(topicEntry) : [];
-  }, [relationship]);
+    const candidates = [
+      record?.substantive_intelligence?.subject_rankings,
+      record?.substantive_intelligence?.subject_trends,
+      record?.evidence?.substantive?.subject_rankings,
+      record?.evidence?.substantive?.subject_trends,
+      record?.topics,
+      record?.issues,
+      record?.categories,
+    ];
 
-  const turningPoints = useMemo(
-    () => (Array.isArray(changes) ? changes.map(changeEntry) : []),
-    [changes]
-  );
+    const raw = candidates.find(Array.isArray);
 
-  if (!relationship) return null;
-  const evidence =
-    relationship?.evidence_summary ||
-    relationship?.evidenceSummary ||
-    evidenceSummary(relationship) ||
+    return Array.isArray(raw)
+      ? raw.map(topicEntry)
+      : [];
+  }, [record]);
+
+    const turningPoints = useMemo(() => {
+
+        const rawChangePoints = pick(
+          record,
+          ["change_episodes", "changeEpisodes"],
+          []
+        );
+
+    const recordChangePoints = Array.isArray(rawChangePoints)
+      ? rawChangePoints
+      : Array.isArray(rawChangePoints?.items)
+      ? rawChangePoints.items
+      : Array.isArray(rawChangePoints?.records)
+      ? rawChangePoints.records
+      : [];
+
+    const propChanges = Array.isArray(changes)
+      ? changes
+      : Array.isArray(changes?.change_points)
+      ? changes.change_points
+      : Array.isArray(changes?.changePoints)
+      ? changes.changePoints
+      : [];
+
+    const source =
+      propChanges.length > 0
+        ? propChanges
+        : recordChangePoints;
+
+    return source.map(changeEntry);
+  }, [changes, record]);
+  if (!record) return null;
+  const evidence = evidenceSummary(record);
+
+  const substantive =
+    record?.substantive_intelligence ||
+    record?.substantive ||
     {};
 
+  const substantiveSummary =
+    substantive?.evidence_summary ||
+    substantive?.summary ||
+    record?.evidence?.substantive ||
+    {};
+
+  const subjectRankings =
+    Array.isArray(substantive?.subject_rankings)
+      ? substantive.subject_rankings
+      : [];
+
+  const subjectTrends =
+    Array.isArray(substantive?.subject_trends)
+      ? substantive.subject_trends
+      : [];
+
+  const resolutionDisagreements =
+    Array.isArray(substantive?.resolution_disagreements)
+      ? substantive.resolution_disagreements
+      : [];
+
+  const issuePositions =
+    substantive?.issue_positions || {};
+
+  const issueRowsCountryA =
+    Array.isArray(issuePositions?.[countryA])
+      ? issuePositions[countryA]
+      : [];
+
+  const issueRowsCountryB =
+    Array.isArray(issuePositions?.[countryB])
+      ? issuePositions[countryB]
+      : [];
+
+
   const directionalAgreement = asNumber(
-    pick(relationship, [
-      "directional_agreement",
-      "directionalAgreement",
-    ])
-  );
+  pick(record, [
+    "directional_agreement",
+    "directionalAgreement",
+  ])
+);
 
-  const meanAlignment = asNumber(
-    pick(relationship, [
-      "mean_alignment",
-      "meanAlignment",
-    ])
-  );
+const meanAlignment = asNumber(
+  pick(record, [
+    "mean_alignment",
+    "meanAlignment",
+  ])
+);
 
-  const meanDivergence = asNumber(
-    pick(relationship, [
-      "mean_divergence",
-      "meanDivergence",
-    ])
-  );
+const meanDivergence = asNumber(
+  pick(record, [
+    "mean_divergence",
+    "meanDivergence",
+  ])
+);
 
-  const changeEpisodeCount = asNumber(
-    pick(relationship, [
+const rawChangePoints = pick(record, [
+  "change_points",
+  "changePoints",
+], []);
+
+const recordChangePoints = Array.isArray(rawChangePoints)
+  ? rawChangePoints
+  : Array.isArray(rawChangePoints?.items)
+  ? rawChangePoints.items
+  : Array.isArray(rawChangePoints?.records)
+  ? rawChangePoints.records
+  : [];
+
+const changeEpisodeCount =
+  asNumber(
+    pick(record, [
       "change_episode_count",
       "changeEpisodeCount",
-      "change_points",
     ])
-  );
+  ) ?? turningPoints.length;
 
-  const confirmedEpisodeCount = asNumber(
-    pick(relationship, [
+const confirmedEpisodeCount =
+  asNumber(
+    pick(record, [
       "confirmed_episode_count",
       "confirmedEpisodeCount",
     ])
-  );
+  ) ??
+  turningPoints.filter(
+    (point) => point.confirmed === true
+  ).length;
 
-  const evidenceCount = asNumber(
-    pick(relationship, [
-      "evidence_count",
-      "evidenceCount",
-      "total_votes",
-      "shared_votes",
-    ])
-  );
+const evidenceCount = asNumber(
+  pick(record, [
+    "evidence_count",
+    "evidenceCount",
+    "total_votes",
+    "shared_votes",
+  ])
+);
 
-  const relationshipDirection = pick(
-    relationship,
-    ["relationship_direction", "relationshipDirection", "direction"],
-    null
-  );
-
+const relationshipDirection = pick(
+  record,
+  [
+    "relationship_direction",
+    "relationshipDirection",
+    "direction",
+  ],
+  null
+);
   return (
     <article
       className="dossier"
@@ -557,54 +691,65 @@ function RelationshipProfile({
           eyebrow="Exhibit C"
           title="Issues & topic alignment"
         >
-          <div className="evidence-grid">
-            <div className="evidence-card">
-              <span className="evidence-number">
-                {evidence.subjects ?? "—"}
-              </span>
-              <span className="evidence-label">Subjects analysed</span>
-            </div>
-
-            <div className="evidence-card">
-              <span className="evidence-number">
-                {evidence.subject_trend_rows ?? evidence.subjectTrendRows ?? "—"}
-              </span>
-              <span className="evidence-label">Subject trend records</span>
-            </div>
-
-            <div className="evidence-card">
-              <span className="evidence-number">
-                {evidence.resolution_disagreements ??
-                  evidence.resolutionDisagreements ??
-                  "—"}
-              </span>
-              <span className="evidence-label">Resolution disagreements</span>
-            </div>
-
-            <div className="evidence-card">
-              <span className="evidence-number">
-                {evidence.issue_rows_country_a ??
-                  evidence.issueRowsCountryA ??
-                  "—"}
-              </span>
-              <span className="evidence-label">
-                {nameA} issue records
-              </span>
-            </div>
-
-            <div className="evidence-card">
-              <span className="evidence-number">
-                {evidence.issue_rows_country_b ??
-                  evidence.issueRowsCountryB ??
-                  "—"}
-              </span>
-              <span className="evidence-label">
-                {nameB} issue records
-              </span>
-            </div>
+        <div className="evidence-grid">
+          <div className="evidence-card">
+            <span className="evidence-number">
+              {evidence.subjects ?? 0}
+            </span>
+            <span className="evidence-label">
+              Subjects analysed
+            </span>
           </div>
 
+          <div className="evidence-card">
+            <span className="evidence-number">
+              {evidence.subjectTrendRows ?? 0}
+            </span>
+            <span className="evidence-label">
+              Subject trend records
+            </span>
+          </div>
+
+          <div className="evidence-card">
+            <span className="evidence-number">
+              {evidence.resolutionDisagreements ?? 0}
+            </span>
+            <span className="evidence-label">
+              Resolution disagreements
+            </span>
+          </div>
+
+          <div className="evidence-card">
+            <span className="evidence-number">
+              {evidence.issueRowsCountryA ?? 0}
+            </span>
+            <span className="evidence-label">
+              {nameA} issue records
+            </span>
+          </div>
+
+          <div className="evidence-card">
+            <span className="evidence-number">
+              {evidence.issueRowsCountryB ?? 0}
+            </span>
+            <span className="evidence-label">
+              {nameB} issue records
+            </span>
+          </div>
+        </div>
+
           <TopicBars topics={topics} />
+          <div className="substantive-note">
+            <span>Analytical coverage</span>
+            <p>
+              {evidence.subjects ?? 0} subjects were analysed across the
+              available voting record, with{" "}
+              {evidence.subjectTrendRows ?? 0} subject-trend records and{" "}
+              {evidence.resolutionDisagreements ?? 0} resolution-level
+              disagreements available for comparison.
+            </p>
+          </div>
+
         </DossierSection>
 
         <DossierSection
@@ -668,22 +813,22 @@ function RelationshipProfile({
             <div>
               <span>Evidence source</span>
               <strong>
-                {relationship.evidence_source || "UN VOTING"}
+                {record.evidence_source || "UN VOTING"}
               </strong>
             </div>
 
             <div>
               <span>Provenance</span>
               <strong>
-                {relationship.provenance || "UN_VOTES_ANALYZER"}
+                {record.provenance || "UN_VOTES_ANALYZER"}
               </strong>
             </div>
 
             <div>
               <span>Temporal alignment</span>
               <strong>
-                {relationship.evidence?.temporal_alignment ??
-                  relationship.evidence_summary?.temporal_alignment ??
+                {record.evidence?.temporal_alignment ??
+                  record.evidence_summary?.temporal_alignment ??
                   "—"}
               </strong>
             </div>
@@ -691,8 +836,8 @@ function RelationshipProfile({
             <div>
               <span>Change points</span>
               <strong>
-                {relationship.evidence?.change_points ??
-                  relationship.evidence_summary?.change_points ??
+                {record.evidence?.change_points ??
+                  record.evidence_summary?.change_points ??
                   changeEpisodeCount ??
                   "—"}
               </strong>
@@ -701,8 +846,8 @@ function RelationshipProfile({
             <div>
               <span>Issue attribution</span>
               <strong>
-                {relationship.evidence?.issue_attribution ??
-                  relationship.evidence_summary?.issue_attribution ??
+                {record.evidence?.issue_attribution ??
+                  record.evidence_summary?.issue_attribution ??
                   "—"}
               </strong>
             </div>
@@ -710,8 +855,8 @@ function RelationshipProfile({
             <div>
               <span>Episode attribution</span>
               <strong>
-                {relationship.evidence?.episode_attribution ??
-                  relationship.evidence_summary?.episode_attribution ??
+                {record.evidence?.episode_attribution ??
+                  record.evidence_summary?.episode_attribution ??
                   "—"}
               </strong>
             </div>

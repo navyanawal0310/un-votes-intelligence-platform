@@ -26,7 +26,11 @@ pipeline instead of independently loading CSV files.
 """
 
 from pathlib import Path
+from functools import lru_cache
 import pandas as pd
+from packages.analytics.temporal_change_episodes import (
+    build_change_episodes,
+)
 
 
 # ============================================================
@@ -165,6 +169,8 @@ def add_pair_column(df):
     """
 
     df = df.copy()
+    if "pair_key" in df.columns:
+        return df
 
     if (
         "country_a" in df.columns
@@ -272,7 +278,7 @@ def load_data(filename, required=False):
 # ============================================================
 # LOAD COMPLETE PIPELINE
 # ============================================================
-
+@lru_cache(maxsize=1)
 def load_pipeline():
     """
     Load all analytical outputs into one dictionary.
@@ -437,30 +443,28 @@ def find_scorecard_row(pipeline, pair):
 # ============================================================
 # FILTER DATA BY PAIR
 # ============================================================
-
 def filter_pair(df, pair):
     """
     Return all rows belonging to a country pair.
 
-    Matching is orientation-independent.
-
-    The original country ordering in the source data
-    is preserved.
+    Uses the precomputed pair_key when available.
+    This avoids rebuilding pair keys and copying entire
+    analytical DataFrames on every relationship request.
     """
 
     if df.empty:
         return df.copy()
 
-    df = add_pair_column(
-        df
-    )
+    if "pair_key" not in df.columns:
+        df = add_pair_column(df)
 
     if "pair_key" not in df.columns:
         return pd.DataFrame()
 
-    return df[
+    return df.loc[
         df["pair_key"] == pair
     ].copy()
+
 
 # ============================================================
 # BUILD COUNTRY-PAIR BUNDLE
@@ -535,7 +539,18 @@ def get_pair_bundle(
         ).upper().strip()
     else:
         canonical_pair = pair_key
+    # --------------------------------------------------------
+    # Build temporal change episodes from detected change points
+    # --------------------------------------------------------
 
+    pair_change_points = filter_pair(
+        pipeline["change_points"],
+        pair_key
+    )
+
+    change_episodes = build_change_episodes(
+        pair_change_points
+    )
     # --------------------------------------------------------
     # Build complete analytical bundle
     # --------------------------------------------------------
@@ -561,10 +576,10 @@ def get_pair_bundle(
             ),
 
         "change_points":
-            filter_pair(
-                pipeline["change_points"],
-                pair_key
-            ),
+            pair_change_points,
+
+        "change_episodes":
+            change_episodes,
 
         "quantitative":
             filter_pair(

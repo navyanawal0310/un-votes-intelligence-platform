@@ -62,15 +62,28 @@ export function fileNumber(countryA, countryB) {
 }
 
 export function historyPoint(row) {
+  if (!row) {
+    return {
+      label: "",
+      score: null,
+    };
+  }
+
   return {
-    label: pick(row, ["year", "period", "date", "label"], ""),
+    label: pick(
+      row,
+      ["year", "period", "date", "session", "label"],
+      ""
+    ),
     score: normaliseScore(
       pick(row, [
         "score",
         "relationship_score",
+        "relationshipScore",
         "agreement_rate",
         "agreement_score",
         "alignment",
+        "alignment_score",
         "value",
       ])
     ),
@@ -79,21 +92,56 @@ export function historyPoint(row) {
 
 export function changeEntry(row) {
   return {
-    date: pick(row, ["year", "period", "date", "label"], ""),
+    date: pick(
+      row,
+      ["year", "period", "date", "label", "change_year"],
+      ""
+    ),
+
     title: pick(
       row,
       ["title", "headline", "summary", "reason", "description"],
       "Shift in voting alignment"
     ),
+
     detail: pick(
       row,
       ["detail", "description", "explanation", "notes"],
       ""
     ),
+
     magnitude: asNumber(
-      pick(row, ["magnitude", "delta", "change", "shift"])
+      pick(row, [
+        "magnitude",
+        "delta",
+        "change",
+        "shift",
+        "change_magnitude",
+      ])
     ),
-    direction: pick(row, ["direction", "trend"], null),
+
+    direction: pick(
+      row,
+      ["direction", "trend"],
+      null
+    ),
+
+    confirmed:
+      row?.confirmed === true ||
+      row?.confirmed === 1 ||
+      row?.confirmed === "true",
+
+    confidence: asNumber(
+      pick(row, ["confidence"])
+    ),
+
+    effectSize: asNumber(
+      pick(row, ["effect_size", "effectSize"])
+    ),
+
+    persistence: asNumber(
+      pick(row, ["persistence"])
+    ),
   };
 }
 
@@ -143,44 +191,89 @@ export function topicEntry(row) {
  * }
  */
 export function evidenceSummary(obj) {
-  const summary =
-    obj?.evidence_summary ||
-    obj?.evidenceSummary ||
+  const root =
+    obj?.relationship ||
+    obj?.data?.relationship ||
+    obj?.data ||
+    obj ||
     {};
 
+  const summary =
+    root?.evidence_summary ||
+    root?.evidenceSummary ||
+    root?.evidence?.substantive ||
+    root?.substantive_intelligence?.evidence_summary ||
+    root?.substantive?.evidence_summary ||
+    {};
+
+  const subjects = pick(summary, ["subjects", "subject_count"]);
+
+  const subjectTrendRows = pick(summary, [
+    "subject_trend_rows",
+    "subject_trends",
+    "trend_rows",
+  ]);
+
+  const resolutionDisagreements = pick(summary, [
+    "resolution_disagreements",
+    "disagreements",
+    "resolution_disagreement_count",
+  ]);
+
+  const issueRowsCountryA = pick(summary, [
+    "issue_rows_country_a",
+    "country_a_issue_rows",
+  ]);
+
+  const issueRowsCountryB = pick(summary, [
+    "issue_rows_country_b",
+    "country_b_issue_rows",
+  ]);
+
   return {
-    subjects: asNumber(
-      pick(summary, ["subjects", "subject_count"])
-    ),
+    subjects:
+      typeof subjects === "number"
+        ? subjects
+        : Array.isArray(root?.subjects)
+        ? root.subjects.length
+        : null,
 
-    subjectTrendRows: asNumber(
-      pick(summary, [
-        "subject_trend_rows",
-        "subject_trends",
-        "trend_rows",
-      ])
-    ),
+    subjectTrendRows:
+      typeof subjectTrendRows === "number"
+        ? subjectTrendRows
+        : Array.isArray(root?.subject_trends)
+        ? root.subject_trends.length
+        : null,
 
-    resolutionDisagreements: asNumber(
-      pick(summary, [
-        "resolution_disagreements",
-        "disagreements",
-        "resolution_disagreement_count",
-      ])
-    ),
+    resolutionDisagreements:
+      typeof resolutionDisagreements === "number"
+        ? resolutionDisagreements
+        : Array.isArray(root?.resolution_disagreements)
+        ? root.resolution_disagreements.length
+        : null,
 
-    issueRowsCountryA: asNumber(
-      pick(summary, [
-        "issue_rows_country_a",
-        "country_a_issue_rows",
-      ])
-    ),
+    issueRowsCountryA:
+      typeof issueRowsCountryA === "number"
+        ? issueRowsCountryA
+        : Array.isArray(root?.issue_rows_country_a)
+        ? root.issue_rows_country_a.length
+        : null,
 
-    issueRowsCountryB: asNumber(
-      pick(summary, [
-        "issue_rows_country_b",
-        "country_b_issue_rows",
-      ])
-    ),
+    issueRowsCountryB:
+      typeof issueRowsCountryB === "number"
+        ? issueRowsCountryB
+        : Array.isArray(root?.issue_rows_country_b)
+        ? root.issue_rows_country_b.length
+        : null,
   };
+}
+
+export function unwrapRelationship(obj) {
+  return (
+    obj?.relationship ||
+    obj?.data?.relationship ||
+    obj?.data ||
+    obj ||
+    null
+  );
 }

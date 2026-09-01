@@ -672,3 +672,112 @@
     border-right: 0;
   }
 }
+.substantive-note {
+  margin-top: 28px;
+  padding: 18px 20px;
+  border-left: 2px solid var(--gold, #a9762f);
+  background: rgba(169, 118, 47, 0.06);
+}
+
+.substantive-note > span {
+  display: block;
+  margin-bottom: 7px;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.substantive-note p {
+  margin: 0;
+  max-width: 900px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.transcript-question,
+.transcript-answer {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(35, 35, 25, 0.15);
+}
+
+.transcript-question span,
+.transcript-answer span,
+.transcript-evidence-block span {
+  display: block;
+  margin-bottom: 7px;
+
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+
+  opacity: 0.6;
+}
+
+.transcript-question p,
+.transcript-answer p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.transcript-answer p {
+  font-size: 16px;
+}
+
+.transcript-evidence-block {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.transcript-evidence-block > div {
+  padding: 18px 20px;
+  border-right: 1px solid rgba(35, 35, 25, 0.15);
+}
+
+.transcript-evidence-block > div:last-child {
+  border-right: 0;
+}
+
+.transcript-evidence-block p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .transcript-evidence-block {
+    grid-template-columns: 1fr;
+  }
+
+  .transcript-evidence-block > div {
+    border-right: 0;
+    border-bottom: 1px solid rgba(35, 35, 25, 0.15);
+  }
+
+  .transcript-evidence-block > div:last-child {
+    border-bottom: 0;
+  }
+}
+.turning-empty {
+  margin-top: 24px;
+  padding: 22px 24px;
+  border-left: 2px solid rgba(145, 96, 32, 0.55);
+  background: rgba(248, 246, 239, 0.42);
+}
+
+.turning-empty strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.turning-empty p {
+  max-width: 760px;
+  margin: 0;
+  color: #716b5d;
+  font-size: 12px;
+  line-height: 1.65;
+}

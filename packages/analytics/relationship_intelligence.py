@@ -115,15 +115,22 @@ def relationship_profile(
             else 0
         ),
 
-        "change_episode_count": (
-            int(latest["change_episode_count"])
-            if pd.notna(latest["change_episode_count"])
+        "change_episode_count": int(
+            len(bundle.get("change_episodes", pd.DataFrame()))
+        ),
+
+        "confirmed_episode_count": int(
+            bundle["change_episodes"]["confirmed_detections"].sum()
+            if (
+                not bundle.get("change_episodes", pd.DataFrame()).empty
+                and "confirmed_detections" in bundle["change_episodes"].columns
+            )
             else 0
         ),
 
         "confirmed_episode_count": (
-            int(latest["confirmed_episode_count"])
-            if pd.notna(latest["confirmed_episode_count"])
+            int(relationship["confirmed_episode_count"].max())
+            if "confirmed_episode_count" in relationship.columns
             else 0
         ),
 
@@ -141,6 +148,10 @@ def relationship_profile(
 
         "change_points": len(
             bundle["change_points"]
+        ),
+
+        "change_episodes": (
+            bundle["change_episodes"].to_dict(orient="records")
         ),
 
         "relationship_rows": len(

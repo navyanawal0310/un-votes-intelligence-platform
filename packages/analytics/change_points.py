@@ -188,7 +188,7 @@ def detect_change_points(
     issue_column: str = "issue",
     before_window: int = 3,
     after_window: int = 3,
-    magnitude_threshold: float = 0.4,
+    magnitude_threshold: float = 0.025,
     effect_threshold: float = 0.8,
     persistence_window: int = 3,
 ) -> pd.DataFrame:
@@ -444,7 +444,7 @@ def detect_pair_change_points(
     country_b_column: str = "country_b",
     before_window: int = 3,
     after_window: int = 3,
-    magnitude_threshold: float = 0.10,
+    magnitude_threshold: float = 0.025,
     effect_threshold: float = 0.80,
     persistence_window: int = 3,
 ) -> pd.DataFrame:

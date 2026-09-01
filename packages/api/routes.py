@@ -11,7 +11,11 @@ from packages.analytics.relationship_intelligence import (
     relationship_changes,
 )
 
-from packages.analytics.query import execute_query
+from packages.analytics.query import (
+    execute_query,
+    query_country_pair,
+)
+
 from packages.api.schemas import (
     QueryRequest,
     QueryResponse,
