@@ -1,3 +1,0 @@
-country_a,country_b,episode_start,episode_end,peak_change_year,top1_consistent,top_issue_direction_consistent,top3_overlap_2_vs_3,top3_overlap_3_vs_5,top3_overlap_2_vs_5,rank_correlation_2_vs_3,rank_correlation_3_vs_5,rank_correlation_2_vs_5
-IND,RUS,1997,2000,1998,True,True,1.0,0.5,0.5,1.0,0.8,0.8
-IND,USA,2023,2023,2023,False,False,,,,,,

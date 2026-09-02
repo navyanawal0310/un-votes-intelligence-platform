@@ -1,7 +1,0 @@
-tolerance_years,ground_truth_events,detected_events,true_positives,false_positives,false_negatives,precision,recall,f1,mean_absolute_error,median_absolute_error,country_a,country_b
-5,2,0,0,0,2,0.0,0.0,0.0,,,CHN,IND
-5,1,0,0,0,1,0.0,0.0,0.0,,,CHN,RUS
-5,1,0,0,0,1,0.0,0.0,0.0,,,CHN,USA
-5,2,4,2,2,0,0.5,1.0,0.6666666666666666,2.0,2.0,IND,RUS
-5,2,1,0,1,2,0.0,0.0,0.0,,,IND,USA
-5,1,0,0,0,1,0.0,0.0,0.0,,,RUS,USA
