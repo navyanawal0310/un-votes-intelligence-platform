@@ -45,56 +45,57 @@ BASE_DIR = Path(__file__).resolve().parent
 # ============================================================
 
 DATA_SOURCES = {
-    "scorecard": "temporal_country_pair_scorecard.csv",
+    "scorecard":
+        "reports/analytical_outputs/temporal_country_pair_scorecard.csv",
 
     "temporal_alignment":
-        "country_pair_temporal_alignment.csv",
+        "reports/analytical_outputs/country_pair_temporal_alignment.csv",
 
     "change_points":
-        "temporal_alignment_change_points.csv",
+        "reports/analytical_outputs/temporal_alignment_change_points.csv",
     
     "relationship_state":
     "data/gold/analytical/country_pair_relationships.parquet",
 
     "ground_truth":
-        "temporal_ground_truth.csv",
+    "reports/analytical_outputs/temporal_ground_truth.csv",
 
     "ground_truth_validation":
-        "temporal_ground_truth_validation.csv",
+        "reports/analytical_outputs/temporal_ground_truth_validation.csv",
 
     "quantitative_evaluation":
-        "temporal_quantitative_evaluation.csv",
+        "reports/analytical_outputs/temporal_quantitative_evaluation.csv",
 
     "quantitative_by_pair":
-        "temporal_quantitative_by_pair.csv",
+        "reports/analytical_outputs/temporal_quantitative_by_pair.csv",
 
     "event_conditioned":
-        "temporal_event_conditioned_detection.csv",
+        "reports/analytical_outputs/temporal_event_conditioned_detection.csv",
 
     "event_signal":
-        "temporal_event_signal_diagnostic.csv",
+        "reports/analytical_outputs/temporal_event_signal_diagnostic.csv",
 
     "detection_coverage":
-        "temporal_detection_coverage.csv",
+        "reports/analytical_outputs/temporal_detection_coverage.csv",
 
     "robustness":
-        "temporal_robustness_analysis.csv",
+        "reports/analytical_outputs/temporal_robustness_analysis.csv",
 
     "null_baseline":
-        "temporal_null_baseline.csv",
+        "reports/analytical_outputs/temporal_null_baseline.csv",
 
     "issue_attribution":
-        "change_point_explanations.csv",
+        "reports/analytical_outputs/change_point_explanations.csv",
 
     "episode_attribution":
-        "temporal_issue_episode_attribution.csv",
+        "reports/analytical_outputs/temporal_issue_episode_attribution.csv",
 
     "attribution_robustness":
-        "temporal_issue_attribution_robustness.csv",
+        "reports/analytical_outputs/temporal_issue_attribution_robustness.csv",
 
     "attribution_robustness_summary":
-        "temporal_issue_attribution_robustness_summary.csv",
-}
+        "reports/analytical_outputs/temporal_issue_attribution_robustness_summary.csv",
+    }
 
 
 # ============================================================
