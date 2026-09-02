@@ -11,7 +11,6 @@
 **/.env
 **/.env.*
 
-reports/
 notebooks/
 docs/
 apps/frontend/dist
