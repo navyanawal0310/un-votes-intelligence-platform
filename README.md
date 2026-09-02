@@ -1,6 +1,7 @@
 # UN Votes Intelligence
 
 > From voting records to relationship intelligence.
+> **Live Application:** https://un-votes-frontend.onrender.com
 
 UN Votes Intelligence is an evidence-oriented analytical platform that transforms United Nations General Assembly voting records into measurable, temporal and explainable intelligence about relationships between countries.
 
@@ -762,7 +763,7 @@ The future evidence layer is an architectural direction; it is **not currently i
 | About / architecture page | Implemented |
 | Docker Compose | Working locally |
 | Repository cleanup | Initial cleanup complete |
-| Production deployment | Next stage |
+| Production deployment | Live |
 | Current-affairs / geopolitical evidence | Future scope |
 
 ---
