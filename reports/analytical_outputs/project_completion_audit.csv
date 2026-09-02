@@ -1,0 +1,10 @@
+component,weight_percent,status,completion_percent,weighted_contribution,implementation_evidence,testing_evidence,validation_evidence,implementation_total,testing_total,validation_total,overall_project_completion_percent
+Data acquisition & preprocessing,15,VALIDATED,100.0000,15.0000,5,2,1,5,2,1,75.0000
+Core alignment analysis,15,VALIDATED,100.0000,15.0000,3,1,2,3,1,2,75.0000
+Temporal analysis,15,VALIDATED,100.0000,15.0000,3,0,3,3,3,3,75.0000
+Historical ground truth,10,VALIDATED,100.0000,10.0000,1,0,1,2,1,1,75.0000
+Quantitative validation,15,NOT STARTED,0.0000,0.0000,0,0,2,1,1,2,75.0000
+Robustness & sensitivity,10,NOT STARTED,0.0000,0.0000,0,0,2,2,2,2,75.0000
+Explanatory intelligence,10,VALIDATED,100.0000,10.0000,2,2,3,4,3,3,75.0000
+Country-pair intelligence,5,VALIDATED,100.0000,5.0000,1,1,1,1,1,1,75.0000
+Documentation & reproducibility,5,VALIDATED,100.0000,5.0000,3,1,1,3,1,1,75.0000

@@ -1,52 +1,45 @@
+# ================================
 # Python
+# ================================
 __pycache__/
 *.py[cod]
 *.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
+# ================================
 # Environment / secrets
+# ================================
 .env
 .env.*
 !.env.example
 
-# DuckDB / local warehouse
+# ================================
+# Node / Frontend
+# ================================
+node_modules/
+dist/
+apps/frontend/dist/
+
+# ================================
+# Databases / local warehouse
+# ================================
 *.duckdb
 *.duckdb.wal
-
-# Local databases
 *.db
 *.sqlite
 *.sqlite3
 
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-# Official UN raw datasets
-# Official UN voting datasets
-data/raw/*.csv
-
-# DuckDB warehouse
-data/warehouse/*.duckdb
-data/warehouse/*.duckdb.wal
-
-# Processed data
-data/processed/
-
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-.env
-.env.*
-!.env.example
-
-# Data artifacts
+# ================================
+# Generated data artifacts
+# ================================
 data/bronze/
 data/silver/
-data/gold/
+data/processed/
+data/warehouse/
 
 # Generated analytical outputs
 *.parquet
@@ -57,5 +50,22 @@ data/gold/
 !data/silver/.gitkeep
 !data/gold/.gitkeep
 
+# ================================
+# OS / IDE
+# ================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ================================
+# Logs / temporary outputs
+# ================================
+*.log
 temporal_validation_output.txt
 temporal_ground_truth_validation.csv
+
+# ================================
+# Docker
+# ================================
+.docker/

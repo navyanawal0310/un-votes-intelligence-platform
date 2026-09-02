@@ -1,0 +1,12 @@
+validation_component,status,required_files,found_files,evidence,validation_coverage_percent
+Ground-truth dataset,PRESENT,2,1,data/validation/temporal_ground_truth.csv,100.0
+Ground-truth validation,PRESENT,1,1,temporal_ground_truth_validation.csv,100.0
+Exact and tolerance detection evaluation,PRESENT,1,1,temporal_quantitative_evaluation.csv,100.0
+Temporal error analysis,PRESENT,1,1,temporal_error_analysis.csv,100.0
+Country-pair validation,PRESENT,1,1,temporal_quantitative_by_pair.csv,100.0
+Event-conditioned detection,PRESENT,1,1,temporal_event_conditioned_detection.csv,100.0
+Temporal event signal diagnostics,PRESENT,1,1,temporal_event_signal_diagnostic.csv,100.0
+Robustness / sensitivity analysis,PRESENT,1,1,temporal_robustness_analysis.csv,100.0
+Null / random baseline,PRESENT,1,1,temporal_null_baseline.csv,100.0
+Issue attribution,PRESENT,1,1,change_point_explanations.csv,100.0
+Validation test scripts,PRESENT,1,3,test_temporal_issue_attribution.py; test_temporal_issue_attribution_robustness.py; test_temporal_issue_episode_attribution.py,100.0

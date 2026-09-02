@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: unvotes-backend
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      PYTHONPATH: /app
+      CORS_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    container_name: unvotes-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
