@@ -27,6 +27,7 @@ pipeline instead of independently loading CSV files.
 
 from pathlib import Path
 from functools import lru_cache
+import duckdb
 import pandas as pd
 from packages.analytics.temporal_change_episodes import (
     build_change_episodes,
@@ -277,17 +278,123 @@ def load_data(filename, required=False):
     return add_pair_column(df)
 
 # ============================================================
+# RELATIONSHIP-STATE ACCESS
+# ============================================================
+
+def _relationship_state_path():
+    """
+    Return the relationship-state Parquet path.
+
+    The relationship-state layer is intentionally queried lazily.
+    It is large (~937k rows) and should not be materialized into
+    pandas for every API process/request.
+    """
+
+    path = BASE_DIR / DATA_SOURCES["relationship_state"]
+
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Required analytical file missing: {path}"
+        )
+
+    return path
+
+
+def _query_relationship_state(pair_key=None):
+    """
+    Query relationship-state Parquet directly with DuckDB.
+
+    When pair_key is supplied, only that country's pair history
+    is materialized into pandas. This avoids loading the complete
+    relationship-state table into memory.
+    """
+
+    path = _relationship_state_path()
+    parquet = str(path).replace("'", "''")
+
+    con = duckdb.connect()
+    try:
+        if pair_key is None:
+            sql = f"""
+                SELECT DISTINCT
+                    UPPER(TRIM(country_a)) AS country_a,
+                    UPPER(TRIM(country_b)) AS country_b,
+                    UPPER(TRIM(country_a)) || '-' ||
+                    UPPER(TRIM(country_b)) AS pair_key
+                FROM read_parquet('{parquet}')
+            """
+            return con.execute(sql).fetchdf()
+
+        parts = str(pair_key).split("-", 1)
+
+        if len(parts) != 2:
+            return pd.DataFrame()
+
+        country_a, country_b = parts
+
+        sql = f"""
+            SELECT
+                country_a,
+                country_b,
+                year,
+                relationship_score,
+                relationship_direction,
+                mean_alignment,
+                mean_divergence,
+                directional_agreement,
+                evidence_count,
+                change_episode_count,
+                confirmed_episode_count,
+                evidence_source,
+                provenance,
+                ? AS pair_key
+            FROM read_parquet('{parquet}')
+            WHERE
+                (
+                    UPPER(TRIM(country_a)) = ?
+                    AND UPPER(TRIM(country_b)) = ?
+                )
+                OR
+                (
+                    UPPER(TRIM(country_a)) = ?
+                    AND UPPER(TRIM(country_b)) = ?
+                )
+            ORDER BY year
+        """
+
+        return con.execute(
+            sql,
+            [
+                pair_key,
+                country_a,
+                country_b,
+                country_b,
+                country_a,
+            ],
+        ).fetchdf()
+
+    finally:
+        con.close()
+
+
+# ============================================================
 # LOAD COMPLETE PIPELINE
 # ============================================================
 @lru_cache(maxsize=1)
 def load_pipeline():
     """
-    Load all analytical outputs into one dictionary.
+    Load the smaller analytical outputs into one dictionary.
+
+    The large relationship-state Parquet layer is deliberately
+    excluded from eager pandas loading and is queried on demand.
     """
 
     pipeline = {}
 
     for name, filename in DATA_SOURCES.items():
+
+        if name == "relationship_state":
+            continue
 
         required = (
             name == "scorecard"
@@ -299,6 +406,10 @@ def load_pipeline():
         )
 
         pipeline[name] = df
+
+    # Marker retained for compatibility with callers that inspect
+    # the pipeline dictionary. The actual data is loaded lazily.
+    pipeline["relationship_state"] = pd.DataFrame()
 
     return pipeline
 
@@ -337,28 +448,28 @@ def available_pairs(pipeline):
     """
     Return all globally available country pairs.
 
-    Relationship state defines the analytical pair universe.
-    The scorecard is only a derived/benchmark layer.
+    Relationship state defines the analytical pair universe,
+    but it is queried lazily so the 937k-row Parquet file is
+    never materialized into pandas.
     """
 
-    relationship_state = pipeline.get(
-        "relationship_state",
-        pd.DataFrame()
-    )
+    try:
+        relationship_pairs = _query_relationship_state()
 
-    if not relationship_state.empty:
+        if not relationship_pairs.empty:
+            pairs = []
+            for a, b in zip(
+                relationship_pairs["country_a"],
+                relationship_pairs["country_b"],
+            ):
+                pairs.append(
+                    normalize_pair(a, b)
+                )
 
-        relationship_state = add_pair_column(
-            relationship_state
-        )
+            return sorted(set(pairs))
 
-        return sorted(
-            relationship_state["pair_key"]
-            .dropna()
-            .astype(str)
-            .unique()
-            .tolist()
-        )
+    except FileNotFoundError:
+        pass
 
     # Fallback for older pipeline states
 
@@ -387,30 +498,33 @@ def available_countries(pipeline):
     """
     Return all countries represented in the analytical
     relationship-state universe.
+
+    The Parquet source is queried directly so the complete
+    relationship-state table is never loaded into pandas.
     """
 
-    relationship_state = pipeline.get(
-        "relationship_state",
-        pd.DataFrame()
-    )
+    try:
+        relationship_state = _query_relationship_state()
 
-    if relationship_state.empty:
-        return []
+        if not relationship_state.empty:
+            countries = set()
 
-    countries = set()
+            for column in ("country_a", "country_b"):
+                countries.update(
+                    relationship_state[column]
+                    .dropna()
+                    .astype(str)
+                    .str.upper()
+                    .str.strip()
+                    .tolist()
+                )
 
-    for column in ("country_a", "country_b"):
-        if column in relationship_state.columns:
-            countries.update(
-                relationship_state[column]
-                .dropna()
-                .astype(str)
-                .str.upper()
-                .str.strip()
-                .tolist()
-            )
+            return sorted(countries)
 
-    return sorted(countries)
+    except FileNotFoundError:
+        pass
+
+    return []
 
 # ============================================================
 # FIND SCORECARD ROW
@@ -501,23 +615,14 @@ def get_pair_bundle(
     # Determine whether this pair exists globally
     # --------------------------------------------------------
 
-    relationship_state = pipeline.get(
-        "relationship_state",
-        pd.DataFrame()
-    )
-
-    if relationship_state.empty:
+    try:
+        pair_relationship = _query_relationship_state(
+            pair_key
+        )
+    except FileNotFoundError as exc:
         raise ValueError(
             "Relationship-state layer is unavailable."
-        )
-
-    relationship_state = add_pair_column(
-        relationship_state
-    )
-
-    pair_relationship = relationship_state[
-        relationship_state["pair_key"] == pair_key
-    ].copy()
+        ) from exc
 
     if pair_relationship.empty:
         raise ValueError(
